@@ -139,3 +139,8 @@ dist
 .docs
 project.md
 tickets.md
+
+# Docker local development
+_docker/.env.local
+_docker/storage/*
+!_docker/storage/.gitkeep
