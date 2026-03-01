@@ -144,3 +144,5 @@ tickets.md
 _docker/.env.local
 _docker/storage/*
 !_docker/storage/.gitkeep
+
+/src/generated
