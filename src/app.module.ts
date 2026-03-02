@@ -70,7 +70,7 @@ import { PrismaModule } from './prisma/prisma.module';
     LoggerModule,
     PrismaModule,
     RedisModule,
-    QueueModule,
+    QueueModule.register('producer'),
     AppFeatureModule,
     AuthModule,
     OrganisationsModule,

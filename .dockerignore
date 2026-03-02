@@ -1,0 +1,8 @@
+node_modules
+dist
+logs
+.git
+.env
+.env.*
+!.env.example
+_docker/storage
