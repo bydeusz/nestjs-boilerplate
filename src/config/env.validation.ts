@@ -40,6 +40,21 @@ class EnvironmentVariables {
 
   @IsString()
   @IsOptional()
+  REDIS_HOST: string = 'localhost';
+
+  @IsNumber()
+  @IsOptional()
+  @Min(1)
+  @Max(65535)
+  REDIS_PORT: number = 6379;
+
+  @IsNumber()
+  @IsOptional()
+  @Min(0)
+  CACHE_TTL: number = 60000;
+
+  @IsString()
+  @IsOptional()
   API_PREFIX: string = 'api';
 
   @IsString()

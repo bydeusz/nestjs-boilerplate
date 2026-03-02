@@ -5,6 +5,13 @@ export default () => ({
   database: {
     url: process.env.DATABASE_URL,
   },
+  redis: {
+    host: process.env.REDIS_HOST ?? 'localhost',
+    port: parseInt(process.env.REDIS_PORT ?? '6379', 10),
+  },
+  cache: {
+    ttl: parseInt(process.env.CACHE_TTL ?? '60000', 10),
+  },
   cors: {
     origins:
       process.env.CORS_ORIGIN === '*'

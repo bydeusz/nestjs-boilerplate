@@ -1,7 +1,10 @@
+import { CacheModule } from '@nestjs/cache-manager';
+import { BullModule } from '@nestjs/bullmq';
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { createKeyv } from '@keyv/redis';
 import { JwtAuthGuard, RolesGuard } from './common/guards';
 import {
   RequestLoggingInterceptor,
@@ -14,6 +17,8 @@ import { validate } from './config/env.validation';
 import { AppFeatureModule } from './modules/app/app.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { OrganisationsModule } from './modules/organisations/organisations.module';
+import { QueueModule } from './modules/queue/queue.module';
+import { RedisModule } from './modules/redis';
 import { UsersModule } from './modules/users/users.module';
 import { PrismaModule } from './prisma/prisma.module';
 
@@ -24,6 +29,31 @@ import { PrismaModule } from './prisma/prisma.module';
       validate,
       load: [configuration],
       cache: true,
+    }),
+    BullModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => ({
+        connection: {
+          host: configService.get<string>('redis.host', 'localhost'),
+          port: configService.get<number>('redis.port', 6379),
+        },
+      }),
+    }),
+    CacheModule.registerAsync({
+      isGlobal: true,
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => {
+        const host = configService.get<string>('redis.host', 'localhost');
+        const port = configService.get<number>('redis.port', 6379);
+        const ttl = configService.get<number>('cache.ttl', 60000);
+
+        return {
+          stores: [createKeyv(`redis://${host}:${port}`)],
+          ttl,
+        };
+      },
     }),
     ThrottlerModule.forRootAsync({
       imports: [ConfigModule],
@@ -39,6 +69,8 @@ import { PrismaModule } from './prisma/prisma.module';
     }),
     LoggerModule,
     PrismaModule,
+    RedisModule,
+    QueueModule,
     AppFeatureModule,
     AuthModule,
     OrganisationsModule,

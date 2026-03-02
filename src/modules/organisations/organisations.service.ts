@@ -1,4 +1,6 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import type { Cache } from 'cache-manager';
 import { PaginationQueryDto } from '../../common/dto';
 import { PaginatedResult } from '../../common/interfaces';
 import { buildPaginationMeta, buildPrismaSkipTake } from '../../common/utils';
@@ -11,14 +13,25 @@ import {
 
 @Injectable()
 export class OrganisationsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
+  ) {}
 
-  create(
+  private async invalidateCache(): Promise<void> {
+    await this.cacheManager.clear();
+  }
+
+  async create(
     createOrganisationDto: CreateOrganisationDto,
   ): Promise<OrganisationResponseDto> {
-    return this.prisma.organisation.create({
+    const organisation = await this.prisma.organisation.create({
       data: createOrganisationDto,
     });
+
+    await this.invalidateCache();
+
+    return organisation;
   }
 
   async findAll(
@@ -73,17 +86,25 @@ export class OrganisationsService {
   ): Promise<OrganisationResponseDto> {
     await this.findOne(id);
 
-    return this.prisma.organisation.update({
+    const organisation = await this.prisma.organisation.update({
       where: { id },
       data: updateOrganisationDto,
     });
+
+    await this.invalidateCache();
+
+    return organisation;
   }
 
   async remove(id: string): Promise<OrganisationResponseDto> {
     await this.findOne(id);
 
-    return this.prisma.organisation.delete({
+    const organisation = await this.prisma.organisation.delete({
       where: { id },
     });
+
+    await this.invalidateCache();
+
+    return organisation;
   }
 }

@@ -1,4 +1,8 @@
 import {
+  CacheInterceptor,
+  CacheTTL,
+} from '@nestjs/cache-manager';
+import {
   Body,
   Controller,
   Delete,
@@ -8,6 +12,7 @@ import {
   Patch,
   Post,
   Query,
+  UseInterceptors,
 } from '@nestjs/common';
 import { PaginationQueryDto } from '../../common/dto';
 import { Roles } from '../../common/decorators';
@@ -18,6 +23,7 @@ import { UsersService } from './users.service';
 
 @Controller('users')
 @Roles(Role.Admin)
+@UseInterceptors(CacheInterceptor)
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
@@ -27,6 +33,7 @@ export class UsersController {
   }
 
   @Get()
+  @CacheTTL(30000)
   findAll(
     @Query() query: PaginationQueryDto,
   ): Promise<PaginatedResult<UserResponseDto>> {
@@ -34,6 +41,7 @@ export class UsersController {
   }
 
   @Get(':id')
+  @CacheTTL(60000)
   findOne(@Param('id', ParseUUIDPipe) id: string): Promise<UserResponseDto> {
     return this.usersService.findOne(id);
   }

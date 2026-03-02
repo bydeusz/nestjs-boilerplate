@@ -1,4 +1,6 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import type { Cache } from 'cache-manager';
 import { Prisma, User } from '../../generated/prisma/client';
 import { PaginationQueryDto } from '../../common/dto';
 import { PaginatedResult } from '../../common/interfaces';
@@ -20,13 +22,20 @@ const userPublicSelect = {
 
 @Injectable()
 export class UsersService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
+  ) {}
+
+  private async invalidateCache(): Promise<void> {
+    await this.cacheManager.clear();
+  }
 
   async create(createUserDto: CreateUserDto): Promise<UserResponseDto> {
     const { organisationId, password, ...rest } = createUserDto;
     const hashedPassword = await hashPassword(password);
 
-    return this.prisma.user.create({
+    const user = await this.prisma.user.create({
       data: {
         ...rest,
         password: hashedPassword,
@@ -40,6 +49,10 @@ export class UsersService {
       },
       select: userPublicSelect,
     });
+
+    await this.invalidateCache();
+
+    return user;
   }
 
   async createFromRegistration(data: {
@@ -50,7 +63,7 @@ export class UsersService {
   }): Promise<UserResponseDto> {
     const hashedPassword = await hashPassword(data.password);
 
-    return this.prisma.user.create({
+    const user = await this.prisma.user.create({
       data: {
         name: data.name,
         surname: data.surname,
@@ -60,6 +73,10 @@ export class UsersService {
       },
       select: userPublicSelect,
     });
+
+    await this.invalidateCache();
+
+    return user;
   }
 
   async findAll(
@@ -115,6 +132,8 @@ export class UsersService {
       where: { id: userId },
       data: { password: hashedPassword },
     });
+
+    await this.invalidateCache();
   }
 
   async update(
@@ -126,7 +145,7 @@ export class UsersService {
     const { organisationId, password, ...rest } = updateUserDto;
     const hashedPassword = password ? await hashPassword(password) : undefined;
 
-    return this.prisma.user.update({
+    const user = await this.prisma.user.update({
       where: { id },
       data: {
         ...rest,
@@ -141,14 +160,22 @@ export class UsersService {
       },
       select: userPublicSelect,
     });
+
+    await this.invalidateCache();
+
+    return user;
   }
 
   async remove(id: string): Promise<UserResponseDto> {
     await this.findOne(id);
 
-    return this.prisma.user.delete({
+    const user = await this.prisma.user.delete({
       where: { id },
       select: userPublicSelect,
     });
+
+    await this.invalidateCache();
+
+    return user;
   }
 }
