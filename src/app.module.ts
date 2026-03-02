@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { APP_FILTER, APP_INTERCEPTOR } from '@nestjs/core';
+import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
+import { JwtAuthGuard, RolesGuard } from './common/guards';
 import {
   RequestLoggingInterceptor,
   TransformInterceptor,
@@ -10,6 +11,9 @@ import { LoggerModule } from './common/logger';
 import configuration from './config/configuration';
 import { validate } from './config/env.validation';
 import { AppFeatureModule } from './modules/app/app.module';
+import { AuthModule } from './modules/auth/auth.module';
+import { OrganisationsModule } from './modules/organisations/organisations.module';
+import { UsersModule } from './modules/users/users.module';
 import { PrismaModule } from './prisma/prisma.module';
 
 @Module({
@@ -23,8 +27,19 @@ import { PrismaModule } from './prisma/prisma.module';
     LoggerModule,
     PrismaModule,
     AppFeatureModule,
+    AuthModule,
+    OrganisationsModule,
+    UsersModule,
   ],
   providers: [
+    {
+      provide: APP_GUARD,
+      useClass: JwtAuthGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: RolesGuard,
+    },
     {
       provide: APP_FILTER,
       useClass: AllExceptionsFilter,

@@ -1,5 +1,6 @@
 import { plainToInstance } from 'class-transformer';
 import {
+  IsBoolean,
   IsEnum,
   IsNotEmpty,
   IsNumber,
@@ -48,6 +49,30 @@ class EnvironmentVariables {
   @IsEnum(LogLevel)
   @IsOptional()
   LOG_LEVEL: LogLevel = LogLevel.Debug;
+
+  @IsString()
+  @IsNotEmpty()
+  JWT_SECRET: string;
+
+  @IsString()
+  @IsOptional()
+  JWT_EXPIRATION: string = '1h';
+
+  @IsString()
+  @IsNotEmpty()
+  JWT_REFRESH_SECRET: string;
+
+  @IsString()
+  @IsOptional()
+  JWT_REFRESH_EXPIRATION: string = '7d';
+
+  @IsString()
+  @IsNotEmpty()
+  ALLOWED_EMAIL_DOMAINS: string;
+
+  @IsBoolean()
+  @IsOptional()
+  REGISTRATION_ENABLED: boolean = false;
 }
 
 export function validate(config: Record<string, unknown>) {

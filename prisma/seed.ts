@@ -2,6 +2,8 @@ import 'dotenv/config';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { Pool } from 'pg';
 import { PrismaClient } from '../src/generated/prisma/client';
+import { seedOrganisations } from './seeders/organisation.seeder';
+import { seedUsers } from './seeders/user.seeder';
 
 const connectionString = process.env.DATABASE_URL;
 
@@ -15,20 +17,8 @@ const prisma = new PrismaClient({ adapter });
 
 async function main() {
   console.log('Seeding database...');
-
-  // TODO: Add seed data here when models are defined.
-  // Example (uncomment when User model exists):
-  //
-  // const admin = await prisma.user.upsert({
-  //   where: { email: 'admin@example.com' },
-  //   update: {},
-  //   create: {
-  //     email: 'admin@example.com',
-  //     name: 'Admin',
-  //     role: 'ADMIN',
-  //   },
-  // });
-  // console.log('Created admin user:', admin);
+  const organisationIds = await seedOrganisations(prisma);
+  await seedUsers(prisma, organisationIds);
 
   console.log('Seeding completed.');
 }

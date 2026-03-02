@@ -13,3 +13,44 @@ generator client {
 datasource db {
   provider = "postgresql"
 }
+
+model Organisation {
+  id         String   @id @default(uuid())
+  name       String
+  address    String
+  postalCode String
+  city       String
+  kvk        String?
+  vatNumber  String?
+  iban       String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  users      User[]
+}
+
+model User {
+  id             String       @id @default(uuid())
+  name           String
+  surname        String
+  email          String       @unique
+  password       String
+  isAdmin        Boolean      @default(false)
+  organisationId String?
+  organisation   Organisation? @relation(fields: [organisationId], references: [id])
+  refreshTokens  RefreshToken[]
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+}
+
+model RefreshToken {
+  id        String    @id @default(uuid())
+  token     String
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+  @@index([token])
+}
