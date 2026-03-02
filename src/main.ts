@@ -16,11 +16,15 @@ async function bootstrap() {
   const apiPrefix = configService.get<string>('apiPrefix') ?? 'api';
   const port = configService.get<number>('port') ?? 3000;
 
-  app.use(requestIdMiddleware);
   app.use(helmet());
+  app.use(requestIdMiddleware);
   app.enableCors({
-    origin: configService.get<string>('cors.origin'),
+    origin: configService.get<string | string[]>('cors.origins'),
+    methods: configService.get<string>('cors.methods'),
     credentials: true,
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Request-Id'],
+    exposedHeaders: ['X-Request-Id'],
+    maxAge: configService.get<number>('cors.maxAge'),
   });
   app.enableVersioning({
     type: VersioningType.URI,

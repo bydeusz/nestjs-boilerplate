@@ -6,7 +6,15 @@ export default () => ({
     url: process.env.DATABASE_URL,
   },
   cors: {
-    origin: process.env.CORS_ORIGIN ?? '*',
+    origins:
+      process.env.CORS_ORIGIN === '*'
+        ? '*'
+        : (process.env.CORS_ORIGIN ?? '')
+            .split(',')
+            .map((origin) => origin.trim())
+            .filter(Boolean),
+    methods: process.env.CORS_METHODS ?? 'GET,HEAD,PUT,PATCH,POST,DELETE',
+    maxAge: parseInt(process.env.CORS_MAX_AGE ?? '3600', 10),
   },
   log: {
     level:
@@ -18,6 +26,10 @@ export default () => ({
     expiration: process.env.JWT_EXPIRATION ?? '1h',
     refreshSecret: process.env.JWT_REFRESH_SECRET,
     refreshExpiration: process.env.JWT_REFRESH_EXPIRATION ?? '7d',
+  },
+  throttle: {
+    ttl: parseInt(process.env.THROTTLE_TTL ?? '60000', 10),
+    limit: parseInt(process.env.THROTTLE_LIMIT ?? '60', 10),
   },
   auth: {
     allowedEmailDomains: (process.env.ALLOWED_EMAIL_DOMAINS ?? '')

@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { JwtAuthGuard, RolesGuard } from './common/guards';
 import {
   RequestLoggingInterceptor,
@@ -24,6 +25,18 @@ import { PrismaModule } from './prisma/prisma.module';
       load: [configuration],
       cache: true,
     }),
+    ThrottlerModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => ({
+        throttlers: [
+          {
+            ttl: configService.get<number>('throttle.ttl', 60000),
+            limit: configService.get<number>('throttle.limit', 60),
+          },
+        ],
+      }),
+    }),
     LoggerModule,
     PrismaModule,
     AppFeatureModule,
@@ -32,6 +45,10 @@ import { PrismaModule } from './prisma/prisma.module';
     UsersModule,
   ],
   providers: [
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
     {
       provide: APP_GUARD,
       useClass: JwtAuthGuard,

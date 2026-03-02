@@ -43,8 +43,8 @@ class EnvironmentVariables {
   API_PREFIX: string = 'api';
 
   @IsString()
-  @IsOptional()
-  CORS_ORIGIN: string = '*';
+  @IsNotEmpty()
+  CORS_ORIGIN: string;
 
   @IsEnum(LogLevel)
   @IsOptional()
@@ -57,6 +57,16 @@ class EnvironmentVariables {
   @IsString()
   @IsOptional()
   JWT_EXPIRATION: string = '1h';
+
+  @IsNumber()
+  @IsOptional()
+  @Min(1000)
+  THROTTLE_TTL: number = 60000;
+
+  @IsNumber()
+  @IsOptional()
+  @Min(1)
+  THROTTLE_LIMIT: number = 60;
 
   @IsString()
   @IsNotEmpty()

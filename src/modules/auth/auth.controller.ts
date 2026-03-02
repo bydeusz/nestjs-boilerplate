@@ -7,6 +7,7 @@ import {
   Post,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { Throttle } from '@nestjs/throttler';
 import { CurrentUser, Public } from '../../common/decorators';
 import {
   AuthTokensResponseDto,
@@ -26,6 +27,7 @@ export class AuthController {
   ) {}
 
   @Public()
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   @Post('login')
   @HttpCode(HttpStatus.OK)
   login(@Body() loginDto: LoginDto): Promise<AuthTokensResponseDto> {
@@ -33,6 +35,7 @@ export class AuthController {
   }
 
   @Public()
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   @Post('register')
   register(@Body() registerDto: RegisterDto): Promise<AuthTokensResponseDto> {
     const registrationEnabled = this.configService.get<boolean>(
