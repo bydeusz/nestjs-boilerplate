@@ -1,9 +1,11 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma, User } from '../../generated/prisma/client';
+import { PaginationQueryDto } from '../../common/dto';
+import { PaginatedResult } from '../../common/interfaces';
 import { hashPassword } from '../../common/utils';
+import { buildPaginationMeta, buildPrismaSkipTake } from '../../common/utils';
 import { PrismaService } from '../../prisma/prisma.service';
-import { CreateUserDto } from './dto/create-user.dto';
-import { UpdateUserDto } from './dto/update-user.dto';
+import { CreateUserDto, UpdateUserDto, UserResponseDto } from './dto';
 
 const userPublicSelect = {
   id: true,
@@ -20,7 +22,7 @@ const userPublicSelect = {
 export class UsersService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async create(createUserDto: CreateUserDto) {
+  async create(createUserDto: CreateUserDto): Promise<UserResponseDto> {
     const { organisationId, password, ...rest } = createUserDto;
     const hashedPassword = await hashPassword(password);
 
@@ -45,7 +47,7 @@ export class UsersService {
     surname: string;
     email: string;
     password: string;
-  }) {
+  }): Promise<UserResponseDto> {
     const hashedPassword = await hashPassword(data.password);
 
     return this.prisma.user.create({
@@ -60,16 +62,30 @@ export class UsersService {
     });
   }
 
-  findAll() {
-    return this.prisma.user.findMany({
-      orderBy: {
-        createdAt: 'desc',
-      },
-      select: userPublicSelect,
-    });
+  async findAll(
+    query: PaginationQueryDto,
+  ): Promise<PaginatedResult<UserResponseDto>> {
+    const { skip, take } = buildPrismaSkipTake(query);
+
+    const [items, total] = await this.prisma.$transaction([
+      this.prisma.user.findMany({
+        orderBy: {
+          createdAt: 'desc',
+        },
+        select: userPublicSelect,
+        skip,
+        take,
+      }),
+      this.prisma.user.count(),
+    ]);
+
+    return {
+      data: items,
+      meta: buildPaginationMeta(query, total),
+    };
   }
 
-  async findOne(id: string) {
+  async findOne(id: string): Promise<UserResponseDto> {
     const user = await this.prisma.user.findUnique({
       where: { id },
       select: userPublicSelect,
@@ -101,7 +117,10 @@ export class UsersService {
     });
   }
 
-  async update(id: string, updateUserDto: UpdateUserDto) {
+  async update(
+    id: string,
+    updateUserDto: UpdateUserDto,
+  ): Promise<UserResponseDto> {
     await this.findOne(id);
 
     const { organisationId, password, ...rest } = updateUserDto;
@@ -124,7 +143,7 @@ export class UsersService {
     });
   }
 
-  async remove(id: string) {
+  async remove(id: string): Promise<UserResponseDto> {
     await this.findOne(id);
 
     return this.prisma.user.delete({

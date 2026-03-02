@@ -8,10 +8,14 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { CurrentUser, Public } from '../../common/decorators';
-import { ChangePasswordDto } from './dto/change-password.dto';
-import { LoginDto } from './dto/login.dto';
-import { RefreshTokenDto } from './dto/refresh-token.dto';
-import { RegisterDto } from './dto/register.dto';
+import {
+  AuthTokensResponseDto,
+  ChangePasswordDto,
+  LoginDto,
+  MessageResponseDto,
+  RefreshTokenDto,
+  RegisterDto,
+} from './dto';
 import { AuthService } from './auth.service';
 
 @Controller('auth')
@@ -24,13 +28,13 @@ export class AuthController {
   @Public()
   @Post('login')
   @HttpCode(HttpStatus.OK)
-  login(@Body() loginDto: LoginDto) {
+  login(@Body() loginDto: LoginDto): Promise<AuthTokensResponseDto> {
     return this.authService.login(loginDto);
   }
 
   @Public()
   @Post('register')
-  register(@Body() registerDto: RegisterDto) {
+  register(@Body() registerDto: RegisterDto): Promise<AuthTokensResponseDto> {
     const registrationEnabled = this.configService.get<boolean>(
       'auth.registrationEnabled',
     );
@@ -45,13 +49,17 @@ export class AuthController {
   @Public()
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
-  refresh(@Body() refreshTokenDto: RefreshTokenDto) {
+  refresh(
+    @Body() refreshTokenDto: RefreshTokenDto,
+  ): Promise<AuthTokensResponseDto> {
     return this.authService.refreshTokens(refreshTokenDto.refresh_token);
   }
 
   @Post('logout')
   @HttpCode(HttpStatus.OK)
-  async logout(@Body() refreshTokenDto: RefreshTokenDto) {
+  async logout(
+    @Body() refreshTokenDto: RefreshTokenDto,
+  ): Promise<MessageResponseDto> {
     await this.authService.revokeRefreshToken(refreshTokenDto.refresh_token);
     return { message: 'Logged out.' };
   }
@@ -61,7 +69,7 @@ export class AuthController {
   changePassword(
     @CurrentUser('sub') userId: string,
     @Body() changePasswordDto: ChangePasswordDto,
-  ) {
+  ): Promise<AuthTokensResponseDto> {
     return this.authService.changePassword(
       userId,
       changePasswordDto.currentPassword,

@@ -12,19 +12,13 @@ import ms, { StringValue } from 'ms';
 import { comparePassword, hashPassword } from '../../common/utils';
 import { PrismaService } from '../../prisma/prisma.service';
 import { UsersService } from '../users/users.service';
-import { LoginDto } from './dto/login.dto';
-import { RegisterDto } from './dto/register.dto';
+import { AuthTokensResponseDto, LoginDto, RegisterDto } from './dto';
 import { JwtPayload } from './interfaces/jwt-payload.interface';
 
 interface TokenUser {
   id: string;
   email: string;
   isAdmin: boolean;
-}
-
-export interface AuthTokens {
-  access_token: string;
-  refresh_token: string;
 }
 
 @Injectable()
@@ -36,7 +30,7 @@ export class AuthService {
     private readonly usersService: UsersService,
   ) {}
 
-  async generateTokens(user: TokenUser): Promise<AuthTokens> {
+  async generateTokens(user: TokenUser): Promise<AuthTokensResponseDto> {
     const payload: JwtPayload = {
       sub: user.id,
       email: user.email,
@@ -61,7 +55,7 @@ export class AuthService {
     return payload;
   }
 
-  async login(loginDto: LoginDto): Promise<AuthTokens> {
+  async login(loginDto: LoginDto): Promise<AuthTokensResponseDto> {
     const user = await this.usersService.findByEmail(loginDto.email);
 
     if (!user) {
@@ -76,7 +70,7 @@ export class AuthService {
     return this.generateTokens(user);
   }
 
-  async register(registerDto: RegisterDto): Promise<AuthTokens> {
+  async register(registerDto: RegisterDto): Promise<AuthTokensResponseDto> {
     this.validateEmailDomain(registerDto.email);
 
     const existingUser = await this.usersService.findByEmail(registerDto.email);
@@ -88,7 +82,7 @@ export class AuthService {
     return this.generateTokens(user);
   }
 
-  async refreshTokens(refreshToken: string): Promise<AuthTokens> {
+  async refreshTokens(refreshToken: string): Promise<AuthTokensResponseDto> {
     const refreshTokenRecord = await this.getValidRefreshTokenRecord(refreshToken);
 
     await this.prisma.refreshToken.update({
@@ -128,7 +122,7 @@ export class AuthService {
     userId: string,
     currentPassword: string,
     newPassword: string,
-  ): Promise<AuthTokens> {
+  ): Promise<AuthTokensResponseDto> {
     const user = await this.usersService.findById(userId);
 
     if (!user) {

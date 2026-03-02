@@ -8,16 +8,7 @@ import { Reflector } from '@nestjs/core';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { SKIP_TRANSFORM_KEY } from '../decorators';
-
-interface ApiResponse<T> {
-  success: true;
-  statusCode: number;
-  data: T;
-  meta: Record<string, unknown> | null;
-  requestId: string;
-  timestamp: string;
-  path: string;
-}
+import { ApiResponse } from '../interfaces';
 
 interface HttpRequestLike {
   id?: string;
