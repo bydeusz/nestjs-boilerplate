@@ -16,6 +16,14 @@ enum Environment {
   Test = 'test',
 }
 
+enum LogLevel {
+  Debug = 'debug',
+  Info = 'info',
+  Warn = 'warn',
+  Error = 'error',
+  Fatal = 'fatal',
+}
+
 class EnvironmentVariables {
   @IsEnum(Environment)
   NODE_ENV: Environment = Environment.Development;
@@ -36,6 +44,10 @@ class EnvironmentVariables {
   @IsString()
   @IsOptional()
   CORS_ORIGIN: string = '*';
+
+  @IsEnum(LogLevel)
+  @IsOptional()
+  LOG_LEVEL: LogLevel = LogLevel.Debug;
 }
 
 export function validate(config: Record<string, unknown>) {
