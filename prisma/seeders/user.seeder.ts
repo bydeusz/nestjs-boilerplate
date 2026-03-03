@@ -6,63 +6,53 @@ export async function seedUsers(
   prisma: PrismaClient,
   organisationIds: SeededOrganisationIds,
 ): Promise<void> {
-  const adminPasswordHash = await hashPassword('AdminPass123!');
-  const userPasswordHash = await hashPassword('UserPass123!');
+  const adminPasswordHash = await hashPassword('Admin123!');
+  const userPasswordHash = await hashPassword('User123!');
+  const bydeuszOrganisationId = organisationIds.bydeusz;
 
   await prisma.user.upsert({
-    where: { email: 'admin@bydeusz.com' },
+    where: { email: 'john.doe@bydeusz.com' },
     update: {
-      name: 'Tadeusz',
-      surname: 'Admin',
+      name: 'john',
+      surname: 'doe',
       password: adminPasswordHash,
       isAdmin: true,
-      organisationId: organisationIds.bydeusz,
+      organisation: {
+        connect: { id: bydeuszOrganisationId },
+      },
     },
     create: {
-      name: 'Tadeusz',
-      surname: 'Admin',
-      email: 'admin@bydeusz.com',
+      name: 'John',
+      surname: 'Doe',
+      email: 'john.doe@bydeusz.com',
       password: adminPasswordHash,
       isAdmin: true,
-      organisationId: organisationIds.bydeusz,
+      organisation: {
+        connect: { id: bydeuszOrganisationId },
+      },
     },
   });
 
   await prisma.user.upsert({
-    where: { email: 'jane.doe@everon.com' },
-    update: {
-      name: 'Jane',
-      surname: 'Doe',
-      password: userPasswordHash,
-      isAdmin: false,
-      organisationId: organisationIds.everon,
-    },
-    create: {
-      name: 'Jane',
-      surname: 'Doe',
-      email: 'jane.doe@everon.com',
-      password: userPasswordHash,
-      isAdmin: false,
-      organisationId: organisationIds.everon,
-    },
-  });
-
-  await prisma.user.upsert({
-    where: { email: 'john.smith@acme.com' },
+    where: { email: 'john.smith@bydeusz.com' },
     update: {
       name: 'John',
       surname: 'Smith',
       password: userPasswordHash,
       isAdmin: false,
-      organisationId: organisationIds.acme,
+      organisation: {
+        connect: { id: bydeuszOrganisationId },
+      },
     },
     create: {
       name: 'John',
       surname: 'Smith',
-      email: 'john.smith@acme.com',
+      email: 'john.smith@bydeusz.com',
       password: userPasswordHash,
       isAdmin: false,
-      organisationId: organisationIds.acme,
+      organisation: {
+        connect: { id: bydeuszOrganisationId },
+      },
     },
   });
 }
