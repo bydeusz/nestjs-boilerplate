@@ -152,6 +152,8 @@ export class AuthService {
       }),
     ]);
 
+    await this.sendWelcomeEmail(user.email, `${user.name} ${user.surname}`.trim());
+
     return this.generateTokens(user);
   }
 
@@ -299,6 +301,17 @@ export class AuthService {
       context: {
         name,
         code,
+      },
+    });
+  }
+
+  private async sendWelcomeEmail(email: string, name: string): Promise<void> {
+    await this.queueService.addMailJob(MAIL_JOB_SEND, {
+      to: email,
+      subject: 'Welcome to the platform',
+      template: 'welcome',
+      context: {
+        name,
       },
     });
   }

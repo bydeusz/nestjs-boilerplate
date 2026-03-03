@@ -26,9 +26,14 @@ export class MailService implements OnModuleInit, OnModuleDestroy {
   private readonly templatesPath = join(__dirname, 'templates');
 
   constructor(private readonly configService: ConfigService) {
+    const nodeEnv = this.configService.get<string>('nodeEnv', 'development');
     const host = this.configService.get<string>('mail.host', 'localhost');
     const port = this.configService.get<number>('mail.port', 1025);
-    const secure = this.configService.get<boolean>('mail.secure', false);
+    const configuredSecure = this.toBoolean(
+      this.configService.get<unknown>('mail.secure', false),
+    );
+    const secure = nodeEnv === 'production' ? configuredSecure : false;
+    const ignoreTLS = nodeEnv === 'production' ? !secure : true;
     const user = this.configService.get<string>('mail.user', '');
     const password = this.configService.get<string>('mail.password', '');
 
@@ -41,8 +46,13 @@ export class MailService implements OnModuleInit, OnModuleDestroy {
       host,
       port,
       secure,
+      ignoreTLS,
       auth: user && password ? { user, pass: password } : undefined,
     });
+
+    this.logger.log(
+      `Mail transport configured: host=${host}, port=${port}, secure=${secure}, ignoreTLS=${ignoreTLS}, env=${nodeEnv}`,
+    );
   }
 
   async onModuleInit(): Promise<void> {
@@ -91,5 +101,18 @@ export class MailService implements OnModuleInit, OnModuleDestroy {
     const template = Handlebars.compile(templateFile);
 
     return template(context);
+  }
+
+  private toBoolean(value: unknown): boolean {
+    if (typeof value === 'boolean') {
+      return value;
+    }
+
+    if (typeof value === 'string') {
+      const normalized = value.trim().toLowerCase();
+      return normalized === 'true' || normalized === '1';
+    }
+
+    return false;
   }
 }
