@@ -53,4 +53,10 @@ export default () => ({
     password: process.env.SMTP_PASSWORD ?? '',
     from: process.env.MAIL_FROM ?? 'noreply@example.com',
   },
+  storage: {
+    endpoint: process.env.S3_ENDPOINT ?? 'http://localhost:9000',
+    accessKey: process.env.S3_ACCESS_KEY ?? 'minioadmin',
+    secretKey: process.env.S3_SECRET_KEY ?? 'minioadmin',
+    bucket: process.env.S3_BUCKET ?? 'uploads',
+  },
 });

@@ -81,6 +81,22 @@ class EnvironmentVariables {
 
   @IsString()
   @IsOptional()
+  S3_ENDPOINT: string = 'http://localhost:9000';
+
+  @IsString()
+  @IsOptional()
+  S3_ACCESS_KEY: string = 'minioadmin';
+
+  @IsString()
+  @IsOptional()
+  S3_SECRET_KEY: string = 'minioadmin';
+
+  @IsString()
+  @IsOptional()
+  S3_BUCKET: string = 'uploads';
+
+  @IsString()
+  @IsOptional()
   API_PREFIX: string = 'api';
 
   @IsString()

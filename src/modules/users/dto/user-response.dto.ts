@@ -6,4 +6,5 @@ export class UserResponseDto extends BaseEntityDto {
   email!: string;
   isAdmin!: boolean;
   organisationId!: string | null;
+  avatarUrl!: string | null;
 }

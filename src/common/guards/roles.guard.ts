@@ -40,10 +40,14 @@ export class RolesGuard implements CanActivate {
     const userRoles = request.user?.isAdmin
       ? [Role.Admin, Role.User]
       : [Role.User];
-    const hasRequiredRole = requiredRoles.some((role) => userRoles.includes(role));
+    const hasRequiredRole = requiredRoles.some((role) =>
+      userRoles.includes(role),
+    );
 
     if (!hasRequiredRole) {
-      throw new ForbiddenException('You do not have permission to access this resource.');
+      throw new ForbiddenException(
+        'You do not have permission to access this resource.',
+      );
     }
 
     return true;

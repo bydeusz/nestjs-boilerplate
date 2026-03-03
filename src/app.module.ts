@@ -19,6 +19,7 @@ import { AuthModule } from './modules/auth/auth.module';
 import { OrganisationsModule } from './modules/organisations/organisations.module';
 import { QueueModule } from './modules/queue/queue.module';
 import { RedisModule } from './modules/redis';
+import { StorageModule } from './modules/storage';
 import { UsersModule } from './modules/users/users.module';
 import { PrismaModule } from './prisma/prisma.module';
 
@@ -69,6 +70,7 @@ import { PrismaModule } from './prisma/prisma.module';
     }),
     LoggerModule,
     PrismaModule,
+    StorageModule,
     RedisModule,
     QueueModule.register('producer'),
     AppFeatureModule,

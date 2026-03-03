@@ -1,11 +1,13 @@
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import type { Cache } from 'cache-manager';
+import type { Express } from 'express';
 import { Prisma, User } from '../../generated/prisma/client';
 import { PaginationQueryDto } from '../../common/dto';
 import { PaginatedResult } from '../../common/interfaces';
 import { hashPassword } from '../../common/utils';
 import { buildPaginationMeta, buildPrismaSkipTake } from '../../common/utils';
+import { StorageService } from '../storage';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateUserDto, UpdateUserDto, UserResponseDto } from './dto';
 
@@ -16,6 +18,7 @@ const userPublicSelect = {
   email: true,
   isAdmin: true,
   organisationId: true,
+  avatarUrl: true,
   createdAt: true,
   updatedAt: true,
 } satisfies Prisma.UserSelect;
@@ -24,6 +27,7 @@ const userPublicSelect = {
 export class UsersService {
   constructor(
     private readonly prisma: PrismaService,
+    private readonly storageService: StorageService,
     @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
   ) {}
 
@@ -134,6 +138,57 @@ export class UsersService {
     });
 
     await this.invalidateCache();
+  }
+
+  async uploadAvatar(
+    id: string,
+    file: Express.Multer.File,
+  ): Promise<UserResponseDto> {
+    const existingUser = await this.findOne(id);
+
+    if (existingUser.avatarUrl) {
+      const oldKey = this.storageService.extractKeyFromUrl(
+        existingUser.avatarUrl,
+      );
+      await this.storageService.delete(oldKey);
+    }
+
+    const uploadedFile = await this.storageService.upload(file, 'avatars', id);
+
+    const updatedUser = await this.prisma.user.update({
+      where: { id },
+      data: {
+        avatarUrl: uploadedFile.url,
+      },
+      select: userPublicSelect,
+    });
+
+    await this.invalidateCache();
+
+    return updatedUser;
+  }
+
+  async removeAvatar(id: string): Promise<UserResponseDto> {
+    const existingUser = await this.findOne(id);
+
+    if (existingUser.avatarUrl) {
+      const oldKey = this.storageService.extractKeyFromUrl(
+        existingUser.avatarUrl,
+      );
+      await this.storageService.delete(oldKey);
+    }
+
+    const updatedUser = await this.prisma.user.update({
+      where: { id },
+      data: {
+        avatarUrl: null,
+      },
+      select: userPublicSelect,
+    });
+
+    await this.invalidateCache();
+
+    return updatedUser;
   }
 
   async update(

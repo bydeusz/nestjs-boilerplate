@@ -1,19 +1,22 @@
-import {
-  CacheInterceptor,
-  CacheTTL,
-} from '@nestjs/cache-manager';
+import { CacheInterceptor, CacheTTL } from '@nestjs/cache-manager';
 import {
   Body,
   Controller,
   Delete,
+  FileTypeValidator,
   Get,
+  MaxFileSizeValidator,
   Param,
+  ParseFilePipe,
   ParseUUIDPipe,
   Patch,
   Post,
   Query,
+  UploadedFile,
   UseInterceptors,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import type { Express } from 'express';
 import { PaginationQueryDto } from '../../common/dto';
 import { Roles } from '../../common/decorators';
 import { Role } from '../../common/enums';
@@ -60,6 +63,32 @@ export class OrganisationsController {
     @Body() updateOrganisationDto: UpdateOrganisationDto,
   ): Promise<OrganisationResponseDto> {
     return this.organisationsService.update(id, updateOrganisationDto);
+  }
+
+  @Post(':id/logo')
+  @UseInterceptors(FileInterceptor('file'))
+  uploadLogo(
+    @Param('id', ParseUUIDPipe) id: string,
+    @UploadedFile(
+      new ParseFilePipe({
+        validators: [
+          new MaxFileSizeValidator({ maxSize: 5 * 1024 * 1024 }),
+          new FileTypeValidator({
+            fileType: /image\/(jpeg|png|webp|svg\+xml)/,
+          }),
+        ],
+      }),
+    )
+    file: Express.Multer.File,
+  ): Promise<OrganisationResponseDto> {
+    return this.organisationsService.uploadLogo(id, file);
+  }
+
+  @Delete(':id/logo')
+  removeLogo(
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<OrganisationResponseDto> {
+    return this.organisationsService.removeLogo(id);
   }
 
   @Delete(':id')

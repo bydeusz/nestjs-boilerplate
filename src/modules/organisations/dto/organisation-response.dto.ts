@@ -8,4 +8,5 @@ export class OrganisationResponseDto extends BaseEntityDto {
   kvk!: string | null;
   vatNumber!: string | null;
   iban!: string | null;
+  logoUrl!: string | null;
 }

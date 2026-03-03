@@ -22,12 +22,19 @@ export class MailProcessor extends WorkerHost {
     }
   }
 
-  private async handleSendMail(job: Job<Record<string, unknown>>): Promise<void> {
+  private async handleSendMail(
+    job: Job<Record<string, unknown>>,
+  ): Promise<void> {
     this.logger.log(`Processing mail job ${job.id}`);
 
-    const { to, subject, template, context } = job.data as Partial<SendMailOptions>;
+    const { to, subject, template, context } =
+      job.data as Partial<SendMailOptions>;
 
-    if (!this.isValidRecipients(to) || typeof subject !== 'string' || typeof template !== 'string') {
+    if (
+      !this.isValidRecipients(to) ||
+      typeof subject !== 'string' ||
+      typeof template !== 'string'
+    ) {
       throw new Error(`Invalid payload for mail job ${job.id}`);
     }
 

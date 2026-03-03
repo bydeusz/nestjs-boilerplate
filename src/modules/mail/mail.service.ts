@@ -1,6 +1,11 @@
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  OnModuleDestroy,
+  OnModuleInit,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Handlebars from 'handlebars';
 import nodemailer, { type Transporter } from 'nodemailer';
@@ -27,7 +32,10 @@ export class MailService implements OnModuleInit, OnModuleDestroy {
     const user = this.configService.get<string>('mail.user', '');
     const password = this.configService.get<string>('mail.password', '');
 
-    this.from = this.configService.get<string>('mail.from', 'noreply@example.com');
+    this.from = this.configService.get<string>(
+      'mail.from',
+      'noreply@example.com',
+    );
 
     this.transporter = nodemailer.createTransport({
       host,

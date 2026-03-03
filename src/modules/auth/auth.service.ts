@@ -62,7 +62,10 @@ export class AuthService {
       throw new UnauthorizedException('Invalid email or password.');
     }
 
-    const isPasswordValid = await comparePassword(loginDto.password, user.password);
+    const isPasswordValid = await comparePassword(
+      loginDto.password,
+      user.password,
+    );
     if (!isPasswordValid) {
       throw new UnauthorizedException('Invalid email or password.');
     }
@@ -83,7 +86,8 @@ export class AuthService {
   }
 
   async refreshTokens(refreshToken: string): Promise<AuthTokensResponseDto> {
-    const refreshTokenRecord = await this.getValidRefreshTokenRecord(refreshToken);
+    const refreshTokenRecord =
+      await this.getValidRefreshTokenRecord(refreshToken);
 
     await this.prisma.refreshToken.update({
       where: { id: refreshTokenRecord.id },
@@ -98,7 +102,8 @@ export class AuthService {
   }
 
   async revokeRefreshToken(refreshToken: string): Promise<void> {
-    const refreshTokenRecord = await this.getValidRefreshTokenRecord(refreshToken);
+    const refreshTokenRecord =
+      await this.getValidRefreshTokenRecord(refreshToken);
 
     await this.prisma.refreshToken.update({
       where: { id: refreshTokenRecord.id },
@@ -155,11 +160,15 @@ export class AuthService {
   }
 
   private buildRefreshTokenExpiryDate(): Date {
-    const expiration = this.configService.getOrThrow<string>('jwt.refreshExpiration');
+    const expiration = this.configService.getOrThrow<string>(
+      'jwt.refreshExpiration',
+    );
     const ttl = ms(expiration as StringValue);
 
     if (typeof ttl !== 'number') {
-      throw new InternalServerErrorException('Invalid refresh token expiration.');
+      throw new InternalServerErrorException(
+        'Invalid refresh token expiration.',
+      );
     }
 
     return new Date(Date.now() + ttl);
@@ -198,7 +207,8 @@ export class AuthService {
   }
 
   private async getValidRefreshTokenRecord(refreshToken: string) {
-    const { tokenId, tokenSecret, signature } = this.parseRefreshToken(refreshToken);
+    const { tokenId, tokenSecret, signature } =
+      this.parseRefreshToken(refreshToken);
     const expectedSignature = this.signRefreshTokenValue(tokenId, tokenSecret);
     if (signature !== expectedSignature) {
       throw new UnauthorizedException('Invalid refresh token.');
@@ -239,7 +249,8 @@ export class AuthService {
   }
 
   private signRefreshTokenValue(tokenId: string, tokenSecret: string): string {
-    const refreshSecret = this.configService.getOrThrow<string>('jwt.refreshSecret');
+    const refreshSecret =
+      this.configService.getOrThrow<string>('jwt.refreshSecret');
 
     return createHmac('sha256', refreshSecret)
       .update(`${tokenId}.${tokenSecret}`)

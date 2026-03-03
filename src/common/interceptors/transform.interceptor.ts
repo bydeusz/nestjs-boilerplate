@@ -21,9 +21,10 @@ interface HttpResponseLike {
 }
 
 @Injectable()
-export class TransformInterceptor<T>
-  implements NestInterceptor<T, ApiResponse<T>>
-{
+export class TransformInterceptor<T> implements NestInterceptor<
+  T,
+  ApiResponse<T>
+> {
   constructor(private readonly reflector: Reflector) {}
 
   intercept(
@@ -64,7 +65,11 @@ export class TransformInterceptor<T>
     data: T;
     meta: Record<string, unknown> | null;
   } {
-    if (typeof payload !== 'object' || payload === null || Array.isArray(payload)) {
+    if (
+      typeof payload !== 'object' ||
+      payload === null ||
+      Array.isArray(payload)
+    ) {
       return { data: payload, meta: null };
     }
 
