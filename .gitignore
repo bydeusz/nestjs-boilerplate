@@ -137,8 +137,6 @@ dist
 
 # Project files
 .docs
-project.md
-tickets.md
 
 # Docker local development
 _docker/.env.local
