@@ -127,11 +127,11 @@ Kan je voor mij een plan maken voor Ticket 9 uit het @tickets.md bestand? Je kun
 
 ## Phase 8 — Mail en file handling
 
-- [ ] Ticket 29 — Implementeer Mail module  
+- [x] Ticket 29 — Implementeer Mail module  
   **Beschrijving:** Configureer mail service met SMTP ondersteuning. Zorg dat emails verstuurd kunnen worden via templates. Gebruik hier nodemailer voor. Sla voor nu de SMTP gegevens op in de .env file.
 
 - [ ] Ticket 31 — Implementeer S3 storage support met minio  
-  **Beschrijving:** Voeg ondersteuning toe voor file uploads naar minio. Dit maakt file storage schaalbaar. Ik wil dat je als eerst een avatar upload maakt die gekoppeld is aan een user.
+  **Beschrijving:** Voeg ondersteuning toe voor file uploads naar minio. Dit maakt file storage schaalbaar. Ik wil dat je een globaal object maakt die ik op meerdere plekken kan inzetten zoals het uploaden van een avatar voor een user en een logo voor een organisatie.
 
 ## Phase 9 — Monitoring en health
 

@@ -1,11 +1,16 @@
 import { OnWorkerEvent, Processor, WorkerHost } from '@nestjs/bullmq';
 import { Logger } from '@nestjs/common';
 import { Job } from 'bullmq';
+import { MailService } from '../../mail';
+import type { SendMailOptions } from '../../mail';
 import { MAIL_JOB_SEND, MAIL_QUEUE } from '../constants/queue.constants';
 
 @Processor(MAIL_QUEUE)
 export class MailProcessor extends WorkerHost {
   private readonly logger = new Logger(MailProcessor.name);
+  constructor(private readonly mailService: MailService) {
+    super();
+  }
 
   async process(job: Job<Record<string, unknown>>): Promise<void> {
     switch (job.name) {
@@ -19,7 +24,28 @@ export class MailProcessor extends WorkerHost {
 
   private async handleSendMail(job: Job<Record<string, unknown>>): Promise<void> {
     this.logger.log(`Processing mail job ${job.id}`);
-    // Mail service integratie volgt in Ticket 29.
+
+    const { to, subject, template, context } = job.data as Partial<SendMailOptions>;
+
+    if (!this.isValidRecipients(to) || typeof subject !== 'string' || typeof template !== 'string') {
+      throw new Error(`Invalid payload for mail job ${job.id}`);
+    }
+
+    await this.mailService.sendMail({
+      to,
+      subject,
+      template,
+      context,
+    });
+  }
+
+  private isValidRecipients(value: unknown): value is string | string[] {
+    return (
+      typeof value === 'string' ||
+      (Array.isArray(value) &&
+        value.length > 0 &&
+        value.every((recipient) => typeof recipient === 'string'))
+    );
   }
 
   @OnWorkerEvent('failed')

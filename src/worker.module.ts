@@ -4,6 +4,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { LoggerModule } from './common/logger';
 import configuration from './config/configuration';
 import { validate } from './config/env.validation';
+import { MailModule } from './modules/mail';
 import { QueueModule } from './modules/queue/queue.module';
 import { RedisModule } from './modules/redis';
 import { PrismaModule } from './prisma/prisma.module';
@@ -29,6 +30,7 @@ import { PrismaModule } from './prisma/prisma.module';
     LoggerModule,
     PrismaModule,
     RedisModule,
+    MailModule,
     QueueModule.register('worker'),
   ],
 })

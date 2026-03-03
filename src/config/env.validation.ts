@@ -55,6 +55,32 @@ class EnvironmentVariables {
 
   @IsString()
   @IsOptional()
+  SMTP_HOST: string = 'localhost';
+
+  @IsNumber()
+  @IsOptional()
+  @Min(1)
+  @Max(65535)
+  SMTP_PORT: number = 1025;
+
+  @IsBoolean()
+  @IsOptional()
+  SMTP_SECURE: boolean = false;
+
+  @IsString()
+  @IsOptional()
+  SMTP_USER: string = '';
+
+  @IsString()
+  @IsOptional()
+  SMTP_PASSWORD: string = '';
+
+  @IsString()
+  @IsOptional()
+  MAIL_FROM: string = 'noreply@example.com';
+
+  @IsString()
+  @IsOptional()
   API_PREFIX: string = 'api';
 
   @IsString()
