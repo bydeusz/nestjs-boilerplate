@@ -37,10 +37,12 @@ model User {
   email          String       @unique
   password       String
   isAdmin        Boolean      @default(false)
+  isActive       Boolean      @default(false)
   avatarUrl      String?
   organisationId String?
   organisation   Organisation? @relation(fields: [organisationId], references: [id])
   refreshTokens  RefreshToken[]
+  activationCodes ActivationCode[]
   files          File[]
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
@@ -82,4 +84,16 @@ model RefreshToken {
 
   @@index([userId])
   @@index([token])
+}
+
+model ActivationCode {
+  id        String   @id @default(uuid())
+  code      String
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([code])
 }

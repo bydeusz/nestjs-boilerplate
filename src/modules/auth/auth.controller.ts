@@ -11,12 +11,14 @@ import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { CurrentUser, Public } from '../../common/decorators';
 import {
+  ActivateDto,
   AuthTokensResponseDto,
   ChangePasswordDto,
   LoginDto,
   MessageResponseDto,
   RefreshTokenDto,
   RegisterDto,
+  ResendActivationDto,
 } from './dto';
 import { AuthService } from './auth.service';
 
@@ -40,7 +42,7 @@ export class AuthController {
   @Public()
   @Throttle({ default: { limit: 5, ttl: 60000 } })
   @Post('register')
-  register(@Body() registerDto: RegisterDto): Promise<AuthTokensResponseDto> {
+  register(@Body() registerDto: RegisterDto): Promise<MessageResponseDto> {
     const registrationEnabled = this.configService.get<boolean>(
       'auth.registrationEnabled',
     );
@@ -50,6 +52,24 @@ export class AuthController {
     }
 
     return this.authService.register(registerDto);
+  }
+
+  @Public()
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  @Post('activate')
+  @HttpCode(HttpStatus.OK)
+  activate(@Body() activateDto: ActivateDto): Promise<AuthTokensResponseDto> {
+    return this.authService.activate(activateDto.email, activateDto.code);
+  }
+
+  @Public()
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  @Post('resend-activation')
+  @HttpCode(HttpStatus.OK)
+  resendActivationCode(
+    @Body() resendActivationDto: ResendActivationDto,
+  ): Promise<MessageResponseDto> {
+    return this.authService.resendActivationCode(resendActivationDto.email);
   }
 
   @Public()
