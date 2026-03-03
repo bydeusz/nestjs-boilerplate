@@ -72,6 +72,25 @@ export class StorageService implements OnModuleInit {
     };
   }
 
+  async uploadWithKey(
+    file: Express.Multer.File,
+    key: string,
+  ): Promise<StorageFile> {
+    await this.s3Client.send(
+      new PutObjectCommand({
+        Bucket: this.bucket,
+        Key: key,
+        Body: file.buffer,
+        ContentType: file.mimetype,
+      }),
+    );
+
+    return {
+      key,
+      url: this.getPublicUrl(key),
+    };
+  }
+
   async delete(key: string): Promise<void> {
     await this.s3Client.send(
       new DeleteObjectCommand({

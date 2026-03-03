@@ -19,6 +19,7 @@ interface TokenUser {
   id: string;
   email: string;
   isAdmin: boolean;
+  organisationId: string | null;
 }
 
 @Injectable()
@@ -35,6 +36,7 @@ export class AuthService {
       sub: user.id,
       email: user.email,
       isAdmin: user.isAdmin,
+      organisationId: user.organisationId,
     };
     const refreshToken = await this.createAndStoreRefreshToken(user.id);
 
@@ -98,6 +100,7 @@ export class AuthService {
       id: refreshTokenRecord.user.id,
       email: refreshTokenRecord.user.email,
       isAdmin: refreshTokenRecord.user.isAdmin,
+      organisationId: refreshTokenRecord.user.organisationId,
     });
   }
 

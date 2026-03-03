@@ -27,6 +27,7 @@ model Organisation {
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
   users      User[]
+  files      File[]
 }
 
 model User {
@@ -40,8 +41,34 @@ model User {
   organisationId String?
   organisation   Organisation? @relation(fields: [organisationId], references: [id])
   refreshTokens  RefreshToken[]
+  files          File[]
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
+}
+
+enum FileScope {
+  USER
+  ORGANISATION
+}
+
+model File {
+  id             String        @id @default(uuid())
+  originalName   String
+  mimeType       String
+  size           Int
+  key            String        @unique
+  folder         String
+  scope          FileScope
+  userId         String
+  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organisationId String?
+  organisation   Organisation? @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  @@index([userId])
+  @@index([organisationId])
+  @@index([scope])
 }
 
 model RefreshToken {

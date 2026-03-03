@@ -16,6 +16,7 @@ import configuration from './config/configuration';
 import { validate } from './config/env.validation';
 import { AppFeatureModule } from './modules/app/app.module';
 import { AuthModule } from './modules/auth/auth.module';
+import { FilesModule } from './modules/files';
 import { OrganisationsModule } from './modules/organisations/organisations.module';
 import { QueueModule } from './modules/queue/queue.module';
 import { RedisModule } from './modules/redis';
@@ -75,6 +76,7 @@ import { PrismaModule } from './prisma/prisma.module';
     QueueModule.register('producer'),
     AppFeatureModule,
     AuthModule,
+    FilesModule,
     OrganisationsModule,
     UsersModule,
   ],
