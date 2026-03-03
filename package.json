@@ -6,6 +6,7 @@
   "private": true,
   "license": "UNLICENSED",
   "scripts": {
+    "secrets": "node scripts/generate-jwt-secrets.mjs",
     "dev": "concurrently -n api,worker,studio -c blue,magenta,green \"npm run dev:api\" \"npm run dev:worker\" \"npm run prisma:studio\"",
     "build": "nest build",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
