@@ -56,7 +56,9 @@ export class MailService implements OnModuleInit, OnModuleDestroy {
   }
 
   onModuleDestroy(): void {
+    this.logger.log('Closing SMTP transporter...');
     this.transporter.close();
+    this.logger.log('SMTP transporter closed');
   }
 
   async sendMail(options: SendMailOptions): Promise<void> {

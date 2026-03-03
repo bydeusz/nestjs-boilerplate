@@ -16,6 +16,12 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import {
+  ApiBearerAuth,
+  ApiBody,
+  ApiConsumes,
+  ApiTags,
+} from '@nestjs/swagger';
 import type { Express } from 'express';
 import { PaginationQueryDto } from '../../common/dto';
 import { Roles } from '../../common/decorators';
@@ -25,6 +31,8 @@ import { CreateUserDto, UpdateUserDto, UserResponseDto } from './dto';
 import { UsersService } from './users.service';
 
 @Controller('users')
+@ApiTags('Users')
+@ApiBearerAuth()
 @Roles(Role.Admin)
 @UseInterceptors(CacheInterceptor)
 export class UsersController {
@@ -59,6 +67,19 @@ export class UsersController {
 
   @Post(':id/avatar')
   @UseInterceptors(FileInterceptor('file'))
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['file'],
+      properties: {
+        file: {
+          type: 'string',
+          format: 'binary',
+        },
+      },
+    },
+  })
   uploadAvatar(
     @Param('id', ParseUUIDPipe) id: string,
     @UploadedFile(

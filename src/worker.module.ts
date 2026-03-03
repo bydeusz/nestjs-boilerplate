@@ -2,6 +2,7 @@ import { BullModule } from '@nestjs/bullmq';
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { LoggerModule } from './common/logger';
+import { GracefulShutdownService } from './common/services/graceful-shutdown.service';
 import configuration from './config/configuration';
 import { validate } from './config/env.validation';
 import { MailModule } from './modules/mail';
@@ -33,5 +34,6 @@ import { PrismaModule } from './prisma/prisma.module';
     MailModule,
     QueueModule.register('worker'),
   ],
+  providers: [GracefulShutdownService],
 })
 export class WorkerModule {}

@@ -67,61 +67,6 @@ services:
       retries: 5
       start_period: 10s
 
-  api:
-    build:
-      context: ..
-      dockerfile: _docker/Dockerfile
-      target: production
-    container_name: ${COMPOSE_PROJECT_NAME}-api
-    restart: unless-stopped
-    command: ["node", "dist/src/main.js"]
-    env_file:
-      - ../.env
-    environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
-      SMTP_HOST: mailpit
-      SMTP_PORT: 1025
-      S3_ENDPOINT: http://minio:9000
-      PORT: ${PORT}
-      NODE_ENV: production
-    ports:
-      - "${PORT}:${PORT}"
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      mailpit:
-        condition: service_healthy
-
-  worker:
-    build:
-      context: ..
-      dockerfile: _docker/Dockerfile
-      target: production
-    container_name: ${COMPOSE_PROJECT_NAME}-worker
-    restart: unless-stopped
-    command: ["node", "dist/src/main-worker.js"]
-    env_file:
-      - ../.env
-    environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
-      SMTP_HOST: mailpit
-      SMTP_PORT: 1025
-      S3_ENDPOINT: http://minio:9000
-      NODE_ENV: production
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      mailpit:
-        condition: service_healthy
-
 volumes:
   postgres_data:
   redis_data:

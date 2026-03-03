@@ -2,6 +2,7 @@ import { ValidationPipe, VersioningType } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { ConfigService } from '@nestjs/config';
 import helmet from 'helmet';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { Logger } from 'nestjs-pino';
 import { AppModule } from './app.module';
 import { requestIdMiddleware } from './common/middleware';
@@ -15,8 +16,18 @@ async function bootstrap() {
   const configService = app.get(ConfigService);
   const apiPrefix = configService.get<string>('apiPrefix') ?? 'api';
   const port = configService.get<number>('port') ?? 3000;
+  const nodeEnv = configService.get<string>('nodeEnv') ?? 'development';
+  const isProduction = nodeEnv === 'production';
 
-  app.use(helmet());
+  app.use(
+    helmet(
+      isProduction
+        ? undefined
+        : {
+            contentSecurityPolicy: false,
+          },
+    ),
+  );
   app.use(requestIdMiddleware);
   app.enableCors({
     origin: configService.get<string | string[]>('cors.origins'),
@@ -38,6 +49,21 @@ async function bootstrap() {
       transform: true,
     }),
   );
+
+  if (!isProduction) {
+    const swaggerConfig = new DocumentBuilder()
+      .setTitle('NestJS Boilerplate API')
+      .setDescription('API documentation for the NestJS boilerplate project.')
+      .setVersion('1.0')
+      .addBearerAuth()
+      .build();
+    const swaggerDocumentFactory = () =>
+      SwaggerModule.createDocument(app, swaggerConfig);
+
+    SwaggerModule.setup('docs', app, swaggerDocumentFactory, {
+      jsonDocumentUrl: 'docs-json',
+    });
+  }
 
   await app.listen(port);
 }

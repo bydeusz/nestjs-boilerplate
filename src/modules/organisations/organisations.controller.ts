@@ -16,6 +16,12 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import {
+  ApiBearerAuth,
+  ApiBody,
+  ApiConsumes,
+  ApiTags,
+} from '@nestjs/swagger';
 import type { Express } from 'express';
 import { PaginationQueryDto } from '../../common/dto';
 import { Roles } from '../../common/decorators';
@@ -29,6 +35,8 @@ import {
 import { OrganisationsService } from './organisations.service';
 
 @Controller('organisations')
+@ApiTags('Organisations')
+@ApiBearerAuth()
 @Roles(Role.Admin)
 @UseInterceptors(CacheInterceptor)
 export class OrganisationsController {
@@ -67,6 +75,19 @@ export class OrganisationsController {
 
   @Post(':id/logo')
   @UseInterceptors(FileInterceptor('file'))
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['file'],
+      properties: {
+        file: {
+          type: 'string',
+          format: 'binary',
+        },
+      },
+    },
+  })
   uploadLogo(
     @Param('id', ParseUUIDPipe) id: string,
     @UploadedFile(

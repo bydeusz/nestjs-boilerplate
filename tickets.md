@@ -146,17 +146,17 @@ Kan je voor mij een plan maken voor Ticket 9 uit het @tickets.md bestand? Je kun
 
 ## Phase 10 — Documentation
 
-- [ ] Ticket 35 — Implementeer Swagger documentatie  
+- [x] Ticket 35 — Implementeer Swagger documentatie  
   **Beschrijving:** Configureer Swagger voor automatische API documentatie. Maak docs beschikbaar via endpoint.
 
 
 ## Phase 11 — Production readiness
 
-- [ ] Ticket 38 — Implementeer graceful shutdown handling  
+- [x] Ticket 38 — Implementeer graceful shutdown handling  
   **Beschrijving:** Zorg dat applicatie netjes afsluit en database connecties sluit. Dit voorkomt data corruptie.
 
-- [ ] Ticket 39 — Configureer production logging  
+- [x] Ticket 39 — Configureer production logging  
   **Beschrijving:** Configureer logging voor production gebruik. Zorg dat logs bruikbaar zijn voor monitoring systemen.
 
-- [ ] Ticket 40 — Finaliseer production Docker configuratie  
+- [x] Ticket 40 — Finaliseer production Docker configuratie  
   **Beschrijving:** Optimaliseer Docker setup voor production deployments. Zorg voor kleine image en veilige configuratie. Er moet ook een Nest JS container komen van de applicatie deze zit nog niet in de docker workflow.

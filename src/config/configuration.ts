@@ -27,6 +27,13 @@ export default () => ({
     level:
       process.env.LOG_LEVEL ??
       (process.env.NODE_ENV === 'production' ? 'info' : 'debug'),
+    fileEnabled: process.env.LOG_FILE_ENABLED === 'true',
+  },
+  shutdown: {
+    forceExitTimeoutMs: parseInt(
+      process.env.SHUTDOWN_FORCE_EXIT_TIMEOUT_MS ?? '15000',
+      10,
+    ),
   },
   jwt: {
     secret: process.env.JWT_SECRET,

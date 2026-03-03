@@ -6,3 +6,11 @@ logs
 .env.*
 !.env.example
 _docker/storage
+.docs
+.cursor
+*.md
+test
+coverage
+.eslintrc*
+eslint.config.*
+.prettierrc*

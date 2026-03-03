@@ -7,12 +7,17 @@ import {
   S3Client,
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  OnModuleDestroy,
+  OnModuleInit,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { StorageFile } from './storage.interface';
 
 @Injectable()
-export class StorageService implements OnModuleInit {
+export class StorageService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(StorageService.name);
   private readonly s3Client: S3Client;
   private readonly bucket: string;
@@ -47,6 +52,12 @@ export class StorageService implements OnModuleInit {
 
   async onModuleInit(): Promise<void> {
     await this.ensureBucketExists();
+  }
+
+  onModuleDestroy(): void {
+    this.logger.log('Closing S3 client...');
+    this.s3Client.destroy();
+    this.logger.log('S3 client closed');
   }
 
   async upload(

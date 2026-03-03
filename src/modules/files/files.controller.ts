@@ -13,6 +13,12 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import {
+  ApiBearerAuth,
+  ApiBody,
+  ApiConsumes,
+  ApiTags,
+} from '@nestjs/swagger';
 import type { Express } from 'express';
 import { CurrentUser } from '../../common/decorators';
 import { PaginatedResult } from '../../common/interfaces';
@@ -20,11 +26,26 @@ import { FileListQueryDto, FileResponseDto } from './dto';
 import { FilesService } from './files.service';
 
 @Controller('files')
+@ApiTags('Files')
+@ApiBearerAuth()
 export class FilesController {
   constructor(private readonly filesService: FilesService) {}
 
   @Post('user/:folder')
   @UseInterceptors(FileInterceptor('file'))
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['file'],
+      properties: {
+        file: {
+          type: 'string',
+          format: 'binary',
+        },
+      },
+    },
+  })
   uploadUserFile(
     @CurrentUser('sub') userId: string,
     @Param('folder') folder: string,
@@ -40,6 +61,19 @@ export class FilesController {
 
   @Post('organisation/:folder')
   @UseInterceptors(FileInterceptor('file'))
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['file'],
+      properties: {
+        file: {
+          type: 'string',
+          format: 'binary',
+        },
+      },
+    },
+  })
   uploadOrganisationFile(
     @CurrentUser('sub') userId: string,
     @CurrentUser('organisationId') organisationId: string | null,

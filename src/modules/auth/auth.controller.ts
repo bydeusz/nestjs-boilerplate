@@ -7,6 +7,7 @@ import {
   Post,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { CurrentUser, Public } from '../../common/decorators';
 import {
@@ -20,6 +21,8 @@ import {
 import { AuthService } from './auth.service';
 
 @Controller('auth')
+@ApiTags('Auth')
+@ApiBearerAuth()
 export class AuthController {
   constructor(
     private readonly authService: AuthService,

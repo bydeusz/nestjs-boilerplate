@@ -107,6 +107,15 @@ class EnvironmentVariables {
   @IsOptional()
   LOG_LEVEL: LogLevel = LogLevel.Debug;
 
+  @IsBoolean()
+  @IsOptional()
+  LOG_FILE_ENABLED: boolean = false;
+
+  @IsNumber()
+  @IsOptional()
+  @Min(1000)
+  SHUTDOWN_FORCE_EXIT_TIMEOUT_MS: number = 15000;
+
   @IsString()
   @IsNotEmpty()
   JWT_SECRET: string;
