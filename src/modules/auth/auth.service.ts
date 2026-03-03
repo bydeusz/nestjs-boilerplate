@@ -1,18 +1,25 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   InternalServerErrorException,
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
-import { createHmac, randomBytes, randomUUID } from 'crypto';
+import { createHmac, randomBytes, randomInt, randomUUID } from 'crypto';
 import ms, { StringValue } from 'ms';
 import { comparePassword, hashPassword } from '../../common/utils';
 import { PrismaService } from '../../prisma/prisma.service';
+import { MAIL_JOB_SEND, QueueService } from '../queue';
 import { UsersService } from '../users/users.service';
-import { AuthTokensResponseDto, LoginDto, RegisterDto } from './dto';
+import {
+  AuthTokensResponseDto,
+  LoginDto,
+  MessageResponseDto,
+  RegisterDto,
+} from './dto';
 import { JwtPayload } from './interfaces/jwt-payload.interface';
 
 interface TokenUser {
@@ -29,6 +36,7 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly prisma: PrismaService,
     private readonly usersService: UsersService,
+    private readonly queueService: QueueService,
   ) {}
 
   async generateTokens(user: TokenUser): Promise<AuthTokensResponseDto> {
@@ -72,10 +80,16 @@ export class AuthService {
       throw new UnauthorizedException('Invalid email or password.');
     }
 
+    if (!user.isActive) {
+      throw new ForbiddenException(
+        'Account is not activated. Please check your email.',
+      );
+    }
+
     return this.generateTokens(user);
   }
 
-  async register(registerDto: RegisterDto): Promise<AuthTokensResponseDto> {
+  async register(registerDto: RegisterDto): Promise<MessageResponseDto> {
     this.validateEmailDomain(registerDto.email);
 
     const existingUser = await this.usersService.findByEmail(registerDto.email);
@@ -84,7 +98,87 @@ export class AuthService {
     }
 
     const user = await this.usersService.createFromRegistration(registerDto);
+    await this.prisma.activationCode.deleteMany({
+      where: { userId: user.id },
+    });
+
+    const activationCode = await this.createActivationCode(user.id);
+    await this.sendActivationCodeEmail(
+      user.email,
+      `${user.name} ${user.surname}`.trim(),
+      activationCode.code,
+    );
+
+    return {
+      message: 'Registration successful. Check your email for an activation code.',
+    };
+  }
+
+  async activate(email: string, code: string): Promise<AuthTokensResponseDto> {
+    const user = await this.usersService.findByEmail(email);
+    if (!user) {
+      throw new BadRequestException('Invalid activation code.');
+    }
+
+    if (user.isActive) {
+      throw new BadRequestException('Account is already activated.');
+    }
+
+    const now = new Date();
+    const activationCode = await this.prisma.activationCode.findFirst({
+      where: {
+        userId: user.id,
+        code,
+        expiresAt: {
+          gt: now,
+        },
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+
+    if (!activationCode) {
+      throw new BadRequestException('Invalid or expired activation code.');
+    }
+
+    await this.prisma.$transaction([
+      this.prisma.user.update({
+        where: { id: user.id },
+        data: { isActive: true },
+      }),
+      this.prisma.activationCode.deleteMany({
+        where: { userId: user.id },
+      }),
+    ]);
+
+    await this.sendWelcomeEmail(user.email, `${user.name} ${user.surname}`.trim());
+
     return this.generateTokens(user);
+  }
+
+  async resendActivationCode(email: string): Promise<MessageResponseDto> {
+    const user = await this.usersService.findByEmail(email);
+    if (!user) {
+      throw new BadRequestException('User not found.');
+    }
+
+    if (user.isActive) {
+      throw new BadRequestException('Account is already activated.');
+    }
+
+    await this.prisma.activationCode.deleteMany({
+      where: { userId: user.id },
+    });
+
+    const activationCode = await this.createActivationCode(user.id);
+    await this.sendActivationCodeEmail(
+      user.email,
+      `${user.name} ${user.surname}`.trim(),
+      activationCode.code,
+    );
+
+    return { message: 'A new activation code has been sent to your email.' };
   }
 
   async refreshTokens(refreshToken: string): Promise<AuthTokensResponseDto> {
@@ -148,6 +242,10 @@ export class AuthService {
     const hashedPassword = await hashPassword(newPassword);
     await this.usersService.updatePassword(userId, hashedPassword);
     await this.revokeAllUserTokens(userId);
+    await this.sendPasswordChangedEmail(
+      user.email,
+      `${user.name} ${user.surname}`.trim(),
+    );
 
     return this.generateTokens(user);
   }
@@ -175,6 +273,65 @@ export class AuthService {
     }
 
     return new Date(Date.now() + ttl);
+  }
+
+  private buildActivationCodeExpiryDate(): Date {
+    return new Date(Date.now() + 24 * 60 * 60 * 1000);
+  }
+
+  private generateActivationCode(): string {
+    return randomInt(100000, 1_000_000).toString();
+  }
+
+  private async createActivationCode(userId: string) {
+    return this.prisma.activationCode.create({
+      data: {
+        userId,
+        code: this.generateActivationCode(),
+        expiresAt: this.buildActivationCodeExpiryDate(),
+      },
+    });
+  }
+
+  private async sendActivationCodeEmail(
+    email: string,
+    name: string,
+    code: string,
+  ): Promise<void> {
+    await this.queueService.addMailJob(MAIL_JOB_SEND, {
+      to: email,
+      subject: 'Activate your account',
+      template: 'activation-code',
+      context: {
+        name,
+        code,
+      },
+    });
+  }
+
+  private async sendWelcomeEmail(email: string, name: string): Promise<void> {
+    await this.queueService.addMailJob(MAIL_JOB_SEND, {
+      to: email,
+      subject: 'Welcome to the platform',
+      template: 'welcome',
+      context: {
+        name,
+      },
+    });
+  }
+
+  private async sendPasswordChangedEmail(
+    email: string,
+    name: string,
+  ): Promise<void> {
+    await this.queueService.addMailJob(MAIL_JOB_SEND, {
+      to: email,
+      subject: 'Your password was changed',
+      template: 'password-changed',
+      context: {
+        name,
+      },
+    });
   }
 
   private parseRefreshToken(refreshToken: string): {

@@ -17,6 +17,7 @@ export async function seedUsers(
       surname: 'doe',
       password: adminPasswordHash,
       isAdmin: true,
+      isActive: true,
       organisation: {
         connect: { id: bydeuszOrganisationId },
       },
@@ -27,6 +28,7 @@ export async function seedUsers(
       email: 'john.doe@bydeusz.com',
       password: adminPasswordHash,
       isAdmin: true,
+      isActive: true,
       organisation: {
         connect: { id: bydeuszOrganisationId },
       },
@@ -40,6 +42,7 @@ export async function seedUsers(
       surname: 'Smith',
       password: userPasswordHash,
       isAdmin: false,
+      isActive: true,
       organisation: {
         connect: { id: bydeuszOrganisationId },
       },
@@ -50,6 +53,7 @@ export async function seedUsers(
       email: 'john.smith@bydeusz.com',
       password: userPasswordHash,
       isAdmin: false,
+      isActive: true,
       organisation: {
         connect: { id: bydeuszOrganisationId },
       },

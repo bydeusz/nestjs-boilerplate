@@ -17,6 +17,7 @@ const userPublicSelect = {
   surname: true,
   email: true,
   isAdmin: true,
+  isActive: true,
   organisationId: true,
   avatarUrl: true,
   createdAt: true,
@@ -74,6 +75,7 @@ export class UsersService {
         email: data.email,
         password: hashedPassword,
         isAdmin: true,
+        isActive: false,
       },
       select: userPublicSelect,
     });
