@@ -242,6 +242,10 @@ export class AuthService {
     const hashedPassword = await hashPassword(newPassword);
     await this.usersService.updatePassword(userId, hashedPassword);
     await this.revokeAllUserTokens(userId);
+    await this.sendPasswordChangedEmail(
+      user.email,
+      `${user.name} ${user.surname}`.trim(),
+    );
 
     return this.generateTokens(user);
   }
@@ -310,6 +314,20 @@ export class AuthService {
       to: email,
       subject: 'Welcome to the platform',
       template: 'welcome',
+      context: {
+        name,
+      },
+    });
+  }
+
+  private async sendPasswordChangedEmail(
+    email: string,
+    name: string,
+  ): Promise<void> {
+    await this.queueService.addMailJob(MAIL_JOB_SEND, {
+      to: email,
+      subject: 'Your password was changed',
+      template: 'password-changed',
       context: {
         name,
       },
