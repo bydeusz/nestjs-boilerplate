@@ -135,13 +135,13 @@ Kan je voor mij een plan maken voor Ticket 9 uit het @tickets.md bestand? Je kun
 
 ## Phase 9 — Monitoring en health
 
-- [ ] Ticket 32 — Implementeer Health module  
+- [x] Ticket 32 — Implementeer Health module  
   **Beschrijving:** Maak health endpoint voor monitoring. Zorg dat API status gecontroleerd kan worden.
 
-- [ ] Ticket 33 — Implementeer database health check  
+- [x] Ticket 33 — Implementeer database health check  
   **Beschrijving:** Voeg database connectie health check toe. Dit detecteert database problemen.
 
-- [ ] Ticket 34 — Implementeer Redis health check  
+- [x] Ticket 34 — Implementeer Redis health check  
   **Beschrijving:** Voeg Redis health check toe. Dit detecteert caching en queue problemen.
 
 ## Phase 10 — Documentation

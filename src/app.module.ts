@@ -17,6 +17,7 @@ import { validate } from './config/env.validation';
 import { AppFeatureModule } from './modules/app/app.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { FilesModule } from './modules/files';
+import { HealthModule } from './modules/health';
 import { OrganisationsModule } from './modules/organisations/organisations.module';
 import { QueueModule } from './modules/queue/queue.module';
 import { RedisModule } from './modules/redis';
@@ -77,6 +78,7 @@ import { PrismaModule } from './prisma/prisma.module';
     AppFeatureModule,
     AuthModule,
     FilesModule,
+    HealthModule,
     OrganisationsModule,
     UsersModule,
   ],
