@@ -30,6 +30,10 @@ export class UpdateUserDto {
   isAdmin?: boolean;
 
   @IsOptional()
+  @IsBoolean()
+  isActive?: boolean;
+
+  @IsOptional()
   @IsUUID()
   organisationId?: string;
 }

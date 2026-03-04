@@ -1,6 +1,7 @@
 import {
   IsBoolean,
   IsEmail,
+  IsOptional,
   IsString,
   IsUUID,
   MinLength,
@@ -23,6 +24,11 @@ export class CreateUserDto {
   @IsBoolean()
   isAdmin!: boolean;
 
+  @IsBoolean()
+  @IsOptional()
+  isActive?: boolean;
+
+  @IsOptional()
   @IsUUID()
-  organisationId!: string;
+  organisationId?: string;
 }
