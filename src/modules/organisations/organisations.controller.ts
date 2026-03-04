@@ -3,21 +3,14 @@ import {
   Body,
   Controller,
   Delete,
-  FileTypeValidator,
   Get,
-  MaxFileSizeValidator,
   Param,
-  ParseFilePipe,
   ParseUUIDPipe,
   Patch,
   Post,
   Query,
-  UploadedFile,
-  UseInterceptors,
 } from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
-import { ApiBearerAuth, ApiBody, ApiConsumes, ApiTags } from '@nestjs/swagger';
-import type { Express } from 'express';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { PaginationQueryDto } from '../../common/dto';
 import { Roles } from '../../common/decorators';
 import { Role } from '../../common/enums';
@@ -66,45 +59,6 @@ export class OrganisationsController {
     @Body() updateOrganisationDto: UpdateOrganisationDto,
   ): Promise<OrganisationResponseDto> {
     return this.organisationsService.update(id, updateOrganisationDto);
-  }
-
-  @Post(':id/logo')
-  @UseInterceptors(FileInterceptor('file'))
-  @ApiConsumes('multipart/form-data')
-  @ApiBody({
-    schema: {
-      type: 'object',
-      required: ['file'],
-      properties: {
-        file: {
-          type: 'string',
-          format: 'binary',
-        },
-      },
-    },
-  })
-  uploadLogo(
-    @Param('id', ParseUUIDPipe) id: string,
-    @UploadedFile(
-      new ParseFilePipe({
-        validators: [
-          new MaxFileSizeValidator({ maxSize: 5 * 1024 * 1024 }),
-          new FileTypeValidator({
-            fileType: /image\/(jpeg|png|webp|svg\+xml)/,
-          }),
-        ],
-      }),
-    )
-    file: Express.Multer.File,
-  ): Promise<OrganisationResponseDto> {
-    return this.organisationsService.uploadLogo(id, file);
-  }
-
-  @Delete(':id/logo')
-  removeLogo(
-    @Param('id', ParseUUIDPipe) id: string,
-  ): Promise<OrganisationResponseDto> {
-    return this.organisationsService.removeLogo(id);
   }
 
   @Delete(':id')

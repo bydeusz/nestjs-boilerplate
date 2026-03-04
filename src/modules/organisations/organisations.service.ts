@@ -1,12 +1,10 @@
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import type { Cache } from 'cache-manager';
-import type { Express } from 'express';
 import { PaginationQueryDto } from '../../common/dto';
 import { PaginatedResult } from '../../common/interfaces';
 import { buildPaginationMeta, buildPrismaSkipTake } from '../../common/utils';
 import { PrismaService } from '../../prisma/prisma.service';
-import { StorageService } from '../storage';
 import {
   CreateOrganisationDto,
   OrganisationResponseDto,
@@ -17,7 +15,6 @@ import {
 export class OrganisationsService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly storageService: StorageService,
     @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
   ) {}
 
@@ -112,52 +109,4 @@ export class OrganisationsService {
     return organisation;
   }
 
-  async uploadLogo(
-    id: string,
-    file: Express.Multer.File,
-  ): Promise<OrganisationResponseDto> {
-    const existingOrganisation = await this.findOne(id);
-
-    if (existingOrganisation.logoUrl) {
-      const oldKey = this.storageService.extractKeyFromUrl(
-        existingOrganisation.logoUrl,
-      );
-      await this.storageService.delete(oldKey);
-    }
-
-    const uploadedFile = await this.storageService.upload(file, 'logos', id);
-
-    const organisation = await this.prisma.organisation.update({
-      where: { id },
-      data: {
-        logoUrl: uploadedFile.url,
-      },
-    });
-
-    await this.invalidateCache();
-
-    return organisation;
-  }
-
-  async removeLogo(id: string): Promise<OrganisationResponseDto> {
-    const existingOrganisation = await this.findOne(id);
-
-    if (existingOrganisation.logoUrl) {
-      const oldKey = this.storageService.extractKeyFromUrl(
-        existingOrganisation.logoUrl,
-      );
-      await this.storageService.delete(oldKey);
-    }
-
-    const organisation = await this.prisma.organisation.update({
-      where: { id },
-      data: {
-        logoUrl: null,
-      },
-    });
-
-    await this.invalidateCache();
-
-    return organisation;
-  }
 }

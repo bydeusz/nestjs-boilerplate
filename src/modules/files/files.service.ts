@@ -18,53 +18,56 @@ export class FilesService {
     private readonly storageService: StorageService,
   ) {}
 
-  async uploadUserFile(
-    userId: string,
+  async upload(
+    scope: FileScope,
+    ownerId: string,
+    actorUserId: string,
     folder: string,
     file: Express.Multer.File,
+    replace = false,
   ): Promise<FileResponseDto> {
     const cleanName = this.sanitizeFilename(file.originalname);
-    const key = `uploads/${userId}/${folder}/${Date.now()}-${cleanName}`;
+    const key = `${scope.toLowerCase()}/${ownerId}/${folder}/${Date.now()}-${cleanName}`;
+
+    const existingFiles = replace
+      ? await this.prisma.file.findMany({
+          where: this.buildScopeOwnerFolderFilter(scope, ownerId, folder),
+        })
+      : [];
+
+    for (const existingFile of existingFiles) {
+      await this.storageService.delete(existingFile.key);
+    }
 
     await this.storageService.uploadWithKey(file, key);
 
-    const record = await this.prisma.file.create({
-      data: {
-        originalName: file.originalname,
-        mimeType: file.mimetype,
-        size: file.size,
-        key,
-        folder,
-        scope: FileScope.USER,
-        userId,
-      },
-    });
+    const record = await this.prisma.$transaction(async (tx) => {
+      if (existingFiles.length > 0) {
+        await tx.file.deleteMany({
+          where: {
+            id: {
+              in: existingFiles.map((existingFile) => existingFile.id),
+            },
+          },
+        });
+      }
 
-    return this.toResponseDto(record);
-  }
+      const createdFile = await tx.file.create({
+        data: {
+          originalName: file.originalname,
+          mimeType: file.mimetype,
+          size: file.size,
+          key,
+          folder,
+          scope,
+          userId: scope === FileScope.USER ? ownerId : actorUserId,
+          organisationId: scope === FileScope.ORGANISATION ? ownerId : null,
+        },
+      });
 
-  async uploadOrganisationFile(
-    userId: string,
-    organisationId: string,
-    folder: string,
-    file: Express.Multer.File,
-  ): Promise<FileResponseDto> {
-    const cleanName = this.sanitizeFilename(file.originalname);
-    const key = `uploads/${organisationId}/${folder}/${Date.now()}-${cleanName}`;
+      await this.syncEntityAssetUrl(tx, scope, ownerId, folder, key);
 
-    await this.storageService.uploadWithKey(file, key);
-
-    const record = await this.prisma.file.create({
-      data: {
-        originalName: file.originalname,
-        mimeType: file.mimetype,
-        size: file.size,
-        key,
-        folder,
-        scope: FileScope.ORGANISATION,
-        userId,
-        organisationId,
-      },
+      return createdFile;
     });
 
     return this.toResponseDto(record);
@@ -140,8 +143,12 @@ export class FilesService {
 
     await this.storageService.delete(file.key);
 
-    await this.prisma.file.delete({
-      where: { id: fileId },
+    await this.prisma.$transaction(async (tx) => {
+      await tx.file.delete({
+        where: { id: fileId },
+      });
+
+      await this.syncEntityAssetUrl(tx, file.scope, this.getOwnerId(file), file.folder);
     });
 
     return this.toResponseDto(file);
@@ -179,6 +186,54 @@ export class FilesService {
     }
 
     return { OR: conditions };
+  }
+
+  private buildScopeOwnerFolderFilter(
+    scope: FileScope,
+    ownerId: string,
+    folder: string,
+  ): Prisma.FileWhereInput {
+    return {
+      scope,
+      folder,
+      ...(scope === FileScope.USER
+        ? { userId: ownerId }
+        : { organisationId: ownerId }),
+    };
+  }
+
+  private getOwnerId(file: {
+    scope: FileScope;
+    userId: string;
+    organisationId: string | null;
+  }): string {
+    return file.scope === FileScope.USER ? file.userId : (file.organisationId ?? '');
+  }
+
+  private async syncEntityAssetUrl(
+    tx: Prisma.TransactionClient,
+    scope: FileScope,
+    ownerId: string,
+    folder: string,
+    key?: string,
+  ): Promise<void> {
+    if (scope === FileScope.USER && folder === 'avatar') {
+      await tx.user.update({
+        where: { id: ownerId },
+        data: {
+          avatarUrl: key ? this.storageService.getPublicUrl(key) : null,
+        },
+      });
+    }
+
+    if (scope === FileScope.ORGANISATION && folder === 'logo') {
+      await tx.organisation.update({
+        where: { id: ownerId },
+        data: {
+          logoUrl: key ? this.storageService.getPublicUrl(key) : null,
+        },
+      });
+    }
   }
 
   private async toResponseDto(file: {
