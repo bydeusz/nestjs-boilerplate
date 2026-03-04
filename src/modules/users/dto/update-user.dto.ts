@@ -3,8 +3,6 @@ import {
   IsEmail,
   IsOptional,
   IsString,
-  IsUUID,
-  MinLength,
 } from 'class-validator';
 
 export class UpdateUserDto {
@@ -21,19 +19,6 @@ export class UpdateUserDto {
   email?: string;
 
   @IsOptional()
-  @IsString()
-  @MinLength(8)
-  password?: string;
-
-  @IsOptional()
   @IsBoolean()
   isAdmin?: boolean;
-
-  @IsOptional()
-  @IsBoolean()
-  isActive?: boolean;
-
-  @IsOptional()
-  @IsUUID()
-  organisationId?: string;
 }

@@ -4,6 +4,7 @@ import {
   Controller,
   Delete,
   FileTypeValidator,
+  ForbiddenException,
   Get,
   MaxFileSizeValidator,
   Param,
@@ -42,6 +43,7 @@ export class UsersController {
   }
 
   @Get()
+  @Roles(Role.Admin, Role.User)
   @CacheTTL(30000)
   findAll(
     @Query() query: PaginationQueryDto,
@@ -50,16 +52,58 @@ export class UsersController {
   }
 
   @Get(':id')
+  @Roles(Role.Admin, Role.User)
   @CacheTTL(60000)
-  findOne(@Param('id', ParseUUIDPipe) id: string): Promise<UserResponseDto> {
+  findOne(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser('sub') currentUserId: string,
+    @CurrentUser('isAdmin') isAdmin: boolean,
+  ): Promise<UserResponseDto> {
+    if (!isAdmin && currentUserId !== id) {
+      throw new ForbiddenException(
+        'You can only access your own user details.',
+      );
+    }
+
     return this.usersService.findOne(id);
   }
 
   @Patch(':id')
+  @Roles(Role.Admin, Role.User)
   update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() updateUserDto: UpdateUserDto,
+    @CurrentUser('sub') currentUserId: string,
+    @CurrentUser('isAdmin') isAdmin: boolean,
   ): Promise<UserResponseDto> {
+    const isAdminUpdateRequested = typeof updateUserDto.isAdmin === 'boolean';
+
+    if (isAdminUpdateRequested) {
+      if (!isAdmin) {
+        throw new ForbiddenException(
+          'Only admins can change the isAdmin flag.',
+        );
+      }
+
+      const hasOtherFieldsBesidesIsAdmin = Object.keys(updateUserDto).some(
+        (key) => key !== 'isAdmin',
+      );
+
+      if (hasOtherFieldsBesidesIsAdmin) {
+        throw new ForbiddenException(
+          'Admin updates via this route can only change isAdmin.',
+        );
+      }
+
+      return this.usersService.update(id, updateUserDto);
+    }
+
+    if (currentUserId !== id) {
+      throw new ForbiddenException(
+        'Only the user can update their own profile details.',
+      );
+    }
+
     return this.usersService.update(id, updateUserDto);
   }
 
@@ -101,7 +145,16 @@ export class UsersController {
   }
 
   @Delete(':id')
-  remove(@Param('id', ParseUUIDPipe) id: string): Promise<UserResponseDto> {
+  @Roles(Role.Admin, Role.User)
+  remove(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser('sub') currentUserId: string,
+    @CurrentUser('isAdmin') isAdmin: boolean,
+  ): Promise<UserResponseDto> {
+    if (!isAdmin && currentUserId !== id) {
+      throw new ForbiddenException('You can only delete your own account.');
+    }
+
     return this.usersService.remove(id);
   }
 }

@@ -227,21 +227,10 @@ export class UsersService {
   ): Promise<UserResponseDto> {
     await this.findOne(id);
 
-    const { organisationId, password, ...rest } = updateUserDto;
-    const hashedPassword = password ? await hashPassword(password) : undefined;
-
     const user = await this.prisma.user.update({
       where: { id },
       data: {
-        ...rest,
-        ...(hashedPassword ? { password: hashedPassword } : {}),
-        ...(organisationId
-          ? {
-              organisation: {
-                connect: { id: organisationId },
-              },
-            }
-          : {}),
+        ...updateUserDto,
       },
       select: userPublicSelect,
     });
