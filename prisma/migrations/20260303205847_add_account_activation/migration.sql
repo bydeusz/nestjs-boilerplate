@@ -1,6 +1,9 @@
 -- AlterTable
 ALTER TABLE "User" ADD COLUMN     "isActive" BOOLEAN NOT NULL DEFAULT false;
 
+-- Keep pre-existing accounts active. Activation is only for new registrations.
+UPDATE "User" SET "isActive" = true;
+
 -- CreateTable
 CREATE TABLE "ActivationCode" (
     "id" TEXT NOT NULL,
