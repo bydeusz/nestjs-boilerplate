@@ -19,7 +19,9 @@ export class RedisHealthIndicator {
         return indicator.up();
       }
 
-      return indicator.down({ message: `Unexpected ping response: ${response}` });
+      return indicator.down({
+        message: `Unexpected ping response: ${response}`,
+      });
     } catch (error) {
       return indicator.down({
         message:

@@ -110,7 +110,8 @@ export class AuthService {
     );
 
     return {
-      message: 'Registration successful. Check your email for an activation code.',
+      message:
+        'Registration successful. Check your email for an activation code.',
     };
   }
 
@@ -152,7 +153,10 @@ export class AuthService {
       }),
     ]);
 
-    await this.sendWelcomeEmail(user.email, `${user.name} ${user.surname}`.trim());
+    await this.sendWelcomeEmail(
+      user.email,
+      `${user.name} ${user.surname}`.trim(),
+    );
 
     return this.generateTokens(user);
   }

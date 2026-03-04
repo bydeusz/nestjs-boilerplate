@@ -7,10 +7,9 @@
   "license": "UNLICENSED",
   "scripts": {
     "secrets": "node scripts/generate-jwt-secrets.mjs",
-    "dev": "concurrently -n api,worker,studio -c blue,magenta,green \"npm run dev:api\" \"npm run dev:worker\" \"npm run prisma:studio\"",
+    "dev": "concurrently -n api,mailpit,studio,docs -c blue,magenta,green,yellow \"npm run dev:api\" \"npm run mailpit\" \"npm run prisma:studio\" \"npm run docs\"",
     "build": "nest build",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
-    "docker:build": "docker compose -f _docker/docker-compose.yml --env-file .env build",
     "docker:up": "docker compose -f _docker/docker-compose.yml --env-file .env up -d",
     "docker:down": "docker compose -f _docker/docker-compose.yml --env-file .env down",
     "docker:reset": "docker compose -f _docker/docker-compose.yml --env-file .env down -v",
@@ -38,7 +37,9 @@
     "prisma:deploy": "npx prisma migrate deploy",
     "prisma:reset": "npx prisma migrate reset",
     "prisma:status": "npx prisma migrate status",
-    "prisma:seed": "npx prisma db seed"
+    "prisma:seed": "npm run prisma:generate && npx prisma db seed",
+    "mailpit": "sh -c \"sleep 3 && open http://localhost:8025\"",
+    "docs": "sh -c \"sleep 6 && open http://localhost:3010/docs\""
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1000.0",

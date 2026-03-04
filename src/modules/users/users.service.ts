@@ -37,13 +37,14 @@ export class UsersService {
   }
 
   async create(createUserDto: CreateUserDto): Promise<UserResponseDto> {
-    const { organisationId, password, ...rest } = createUserDto;
+    const { organisationId, password, isActive, ...rest } = createUserDto;
     const hashedPassword = await hashPassword(password);
 
     const user = await this.prisma.user.create({
       data: {
         ...rest,
         password: hashedPassword,
+        isActive: isActive ?? true,
         ...(organisationId
           ? {
               organisation: {

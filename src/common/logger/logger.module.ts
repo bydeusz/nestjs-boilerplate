@@ -12,10 +12,11 @@ import { LoggerModule as PinoLoggerModule } from 'nestjs-pino';
         const fileLoggingEnabled =
           configService.get<boolean>('log.fileEnabled') ?? false;
         const nodeEnv = configService.get<string>('nodeEnv') ?? 'development';
-        const isDevelopment =
-          nodeEnv === 'development';
+        const isDevelopment = nodeEnv === 'development';
         const appVersion =
-          process.env.APP_VERSION ?? process.env.npm_package_version ?? 'unknown';
+          process.env.APP_VERSION ??
+          process.env.npm_package_version ??
+          'unknown';
         const targets = [
           ...(isDevelopment
             ? [
@@ -89,7 +90,8 @@ import { LoggerModule as PinoLoggerModule } from 'nestjs-pino';
                 }
 
                 const rawCode = (error as Error & { code?: unknown }).code;
-                const errorCode = typeof rawCode === 'string' ? rawCode : undefined;
+                const errorCode =
+                  typeof rawCode === 'string' ? rawCode : undefined;
 
                 return {
                   type: error.name,
