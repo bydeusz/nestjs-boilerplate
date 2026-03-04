@@ -5,8 +5,9 @@ import type { Express } from 'express';
 import { Prisma, User } from '../../generated/prisma/client';
 import { PaginationQueryDto } from '../../common/dto';
 import { PaginatedResult } from '../../common/interfaces';
-import { hashPassword } from '../../common/utils';
+import { generatePassword, hashPassword } from '../../common/utils';
 import { buildPaginationMeta, buildPrismaSkipTake } from '../../common/utils';
+import { MAIL_JOB_SEND, QueueService } from '../queue';
 import { StorageService } from '../storage';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateUserDto, UpdateUserDto, UserResponseDto } from './dto';
@@ -29,6 +30,7 @@ export class UsersService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly storageService: StorageService,
+    private readonly queueService: QueueService,
     @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
   ) {}
 
@@ -36,15 +38,18 @@ export class UsersService {
     await this.cacheManager.clear();
   }
 
-  async create(createUserDto: CreateUserDto): Promise<UserResponseDto> {
-    const { organisationId, password, isActive, ...rest } = createUserDto;
-    const hashedPassword = await hashPassword(password);
+  async create(
+    createUserDto: CreateUserDto,
+    organisationId: string | null,
+  ): Promise<UserResponseDto> {
+    const plainPassword = generatePassword();
+    const hashedPassword = await hashPassword(plainPassword);
 
     const user = await this.prisma.user.create({
       data: {
-        ...rest,
+        ...createUserDto,
         password: hashedPassword,
-        isActive: isActive ?? true,
+        isActive: true,
         ...(organisationId
           ? {
               organisation: {
@@ -56,9 +61,31 @@ export class UsersService {
       select: userPublicSelect,
     });
 
+    await this.sendNewUserCredentialsEmail(
+      user.email,
+      user.name,
+      plainPassword,
+    );
+
     await this.invalidateCache();
 
     return user;
+  }
+
+  private async sendNewUserCredentialsEmail(
+    email: string,
+    name: string,
+    password: string,
+  ): Promise<void> {
+    await this.queueService.addMailJob(MAIL_JOB_SEND, {
+      to: email,
+      subject: 'Your account has been created',
+      template: 'new-user-credentials',
+      context: {
+        name,
+        password,
+      },
+    });
   }
 
   async createFromRegistration(data: {

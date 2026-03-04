@@ -19,7 +19,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiBearerAuth, ApiBody, ApiConsumes, ApiTags } from '@nestjs/swagger';
 import type { Express } from 'express';
 import { PaginationQueryDto } from '../../common/dto';
-import { Roles } from '../../common/decorators';
+import { CurrentUser, Roles } from '../../common/decorators';
 import { Role } from '../../common/enums';
 import { PaginatedResult } from '../../common/interfaces';
 import { CreateUserDto, UpdateUserDto, UserResponseDto } from './dto';
@@ -34,8 +34,11 @@ export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
   @Post()
-  create(@Body() createUserDto: CreateUserDto): Promise<UserResponseDto> {
-    return this.usersService.create(createUserDto);
+  create(
+    @Body() createUserDto: CreateUserDto,
+    @CurrentUser('organisationId') organisationId: string | null,
+  ): Promise<UserResponseDto> {
+    return this.usersService.create(createUserDto, organisationId);
   }
 
   @Get()
