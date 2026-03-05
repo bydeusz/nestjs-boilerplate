@@ -17,8 +17,8 @@ export async function seedUsers(
       password: PasswordHash,
       isAdmin: true,
       isActive: true,
-      organisation: {
-        connect: { id: bydeuszOrganisationId },
+      organisations: {
+        set: [{ id: bydeuszOrganisationId }],
       },
     },
     create: {
@@ -28,8 +28,8 @@ export async function seedUsers(
       password: PasswordHash,
       isAdmin: true,
       isActive: true,
-      organisation: {
-        connect: { id: bydeuszOrganisationId },
+      organisations: {
+        connect: [{ id: bydeuszOrganisationId }],
       },
     },
   });
@@ -42,8 +42,8 @@ export async function seedUsers(
       password: PasswordHash,
       isAdmin: false,
       isActive: true,
-      organisation: {
-        connect: { id: bydeuszOrganisationId },
+      organisations: {
+        set: [{ id: bydeuszOrganisationId }],
       },
     },
     create: {
@@ -53,8 +53,8 @@ export async function seedUsers(
       password: PasswordHash,
       isAdmin: false,
       isActive: true,
-      organisation: {
-        connect: { id: bydeuszOrganisationId },
+      organisations: {
+        connect: [{ id: bydeuszOrganisationId }],
       },
     },
   });

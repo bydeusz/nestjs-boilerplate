@@ -18,7 +18,7 @@ const userPublicSelect = {
   email: true,
   isAdmin: true,
   isActive: true,
-  organisationId: true,
+  organisations: { select: { id: true } },
   avatarUrl: true,
   createdAt: true,
   updatedAt: true,
@@ -38,22 +38,20 @@ export class UsersService {
     await this.cacheManager.clear();
   }
 
-  async create(
-    createUserDto: CreateUserDto,
-    organisationId: string | null,
-  ): Promise<UserResponseDto> {
+  async create(createUserDto: CreateUserDto): Promise<UserResponseDto> {
+    const { organisationIds, ...userData } = createUserDto;
     const plainPassword = generatePassword();
     const hashedPassword = await hashPassword(plainPassword);
 
     const user = await this.prisma.user.create({
       data: {
-        ...createUserDto,
+        ...userData,
         password: hashedPassword,
         isActive: true,
-        ...(organisationId
+        ...(organisationIds?.length
           ? {
-              organisation: {
-                connect: { id: organisationId },
+              organisations: {
+                connect: organisationIds.map((id) => ({ id })),
               },
             }
           : {}),
@@ -208,9 +206,11 @@ export class UsersService {
 
   private async toUserResponseDto(user: UserPublic): Promise<UserResponseDto> {
     const avatarUrl = await this.resolveAssetUrl(user.avatarUrl);
+    const { organisations, ...rest } = user;
 
     return {
-      ...user,
+      ...rest,
+      organisationIds: organisations.map((org) => org.id),
       avatarUrl,
     };
   }

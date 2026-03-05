@@ -20,6 +20,7 @@ import type { Express } from 'express';
 import { CurrentUser } from '../../common/decorators';
 import { FileScope } from '../../generated/prisma/client';
 import { PaginatedResult } from '../../common/interfaces';
+import { PrismaService } from '../../prisma/prisma.service';
 import {
   FileListQueryDto,
   FileResponseDto,
@@ -32,7 +33,10 @@ import { FilesService } from './files.service';
 @ApiTags('Files')
 @ApiBearerAuth()
 export class FilesController {
-  constructor(private readonly filesService: FilesService) {}
+  constructor(
+    private readonly filesService: FilesService,
+    private readonly prisma: PrismaService,
+  ) {}
 
   @Post(':scope/:ownerId/:folder')
   @UseInterceptors(FileInterceptor('file'))
@@ -49,12 +53,11 @@ export class FilesController {
       },
     },
   })
-  upload(
+  async upload(
     @Param() params: UploadFileParamsDto,
     @Query() query: UploadFileQueryDto,
     @CurrentUser('sub') userId: string,
     @CurrentUser('isAdmin') isAdmin: boolean,
-    @CurrentUser('organisationId') organisationId: string | null,
     @UploadedFile(
       new ParseFilePipe({
         validators: [new MaxFileSizeValidator({ maxSize: 10 * 1024 * 1024 })],
@@ -63,7 +66,7 @@ export class FilesController {
     file: Express.Multer.File,
   ): Promise<FileResponseDto> {
     const scope = this.resolveScope(params.scope);
-    this.assertUploadAccess(scope, params.ownerId, userId, isAdmin, organisationId);
+    await this.assertUploadAccess(scope, params.ownerId, userId, isAdmin);
     this.assertFolderSpecificFileRules(params.folder, file);
 
     return this.filesService.upload(
@@ -91,11 +94,10 @@ export class FilesController {
       },
     },
   })
-  replace(
+  async replace(
     @Param() params: UploadFileParamsDto,
     @CurrentUser('sub') userId: string,
     @CurrentUser('isAdmin') isAdmin: boolean,
-    @CurrentUser('organisationId') organisationId: string | null,
     @UploadedFile(
       new ParseFilePipe({
         validators: [new MaxFileSizeValidator({ maxSize: 10 * 1024 * 1024 })],
@@ -104,7 +106,7 @@ export class FilesController {
     file: Express.Multer.File,
   ): Promise<FileResponseDto> {
     const scope = this.resolveScope(params.scope);
-    this.assertUploadAccess(scope, params.ownerId, userId, isAdmin, organisationId);
+    await this.assertUploadAccess(scope, params.ownerId, userId, isAdmin);
     this.assertFolderSpecificFileRules(params.folder, file);
 
     return this.filesService.upload(
@@ -156,13 +158,12 @@ export class FilesController {
     throw new BadRequestException('Scope must be either user or organisation.');
   }
 
-  private assertUploadAccess(
+  private async assertUploadAccess(
     scope: FileScope,
     ownerId: string,
     currentUserId: string,
     isAdmin: boolean,
-    organisationId: string | null,
-  ): void {
+  ): Promise<void> {
     if (scope === FileScope.USER) {
       if (!isAdmin && ownerId !== currentUserId) {
         throw new ForbiddenException('You can only upload files for yourself.');
@@ -171,9 +172,17 @@ export class FilesController {
       return;
     }
 
-    if (!organisationId || ownerId !== organisationId) {
+    const membership = await this.prisma.organisation.findFirst({
+      where: {
+        id: ownerId,
+        users: { some: { id: currentUserId } },
+      },
+      select: { id: true },
+    });
+
+    if (!membership) {
       throw new ForbiddenException(
-        'You can only upload organisation files for your own organisation.',
+        'You can only upload organisation files for organisations you belong to.',
       );
     }
   }
