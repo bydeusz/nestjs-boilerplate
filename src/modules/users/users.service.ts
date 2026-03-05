@@ -163,10 +163,17 @@ export class UsersService {
     });
   }
 
-  async updatePassword(userId: string, hashedPassword: string): Promise<void> {
+  async updatePassword(
+    userId: string,
+    hashedPassword: string,
+    mustChangePassword = false,
+  ): Promise<void> {
     await this.prisma.user.update({
       where: { id: userId },
-      data: { password: hashedPassword },
+      data: {
+        password: hashedPassword,
+        mustChangePassword,
+      },
     });
 
     await this.invalidateCache();
@@ -215,7 +222,9 @@ export class UsersService {
     };
   }
 
-  private async resolveAssetUrl(assetRef: string | null): Promise<string | null> {
+  private async resolveAssetUrl(
+    assetRef: string | null,
+  ): Promise<string | null> {
     if (!assetRef) {
       return null;
     }

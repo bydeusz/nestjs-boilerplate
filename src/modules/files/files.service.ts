@@ -104,9 +104,7 @@ export class FilesService {
     };
   }
 
-  async findOne(
-    fileId: string,
-  ): Promise<FileResponseDto> {
+  async findOne(fileId: string): Promise<FileResponseDto> {
     const file = await this.prisma.file.findUnique({
       where: { id: fileId },
     });
@@ -142,7 +140,12 @@ export class FilesService {
         where: { id: fileId },
       });
 
-      await this.syncEntityAssetUrl(tx, file.scope, this.getOwnerId(file), file.folder);
+      await this.syncEntityAssetUrl(
+        tx,
+        file.scope,
+        this.getOwnerId(file),
+        file.folder,
+      );
     });
 
     return this.toResponseDto(file);
@@ -167,7 +170,9 @@ export class FilesService {
     userId: string;
     organisationId: string | null;
   }): string {
-    return file.scope === FileScope.USER ? file.userId : (file.organisationId ?? '');
+    return file.scope === FileScope.USER
+      ? file.userId
+      : (file.organisationId ?? '');
   }
 
   private async syncEntityAssetUrl(

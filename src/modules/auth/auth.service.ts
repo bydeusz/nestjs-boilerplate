@@ -10,7 +10,11 @@ import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { createHmac, randomBytes, randomInt, randomUUID } from 'crypto';
 import ms, { StringValue } from 'ms';
-import { comparePassword, hashPassword } from '../../common/utils';
+import {
+  comparePassword,
+  generatePassword,
+  hashPassword,
+} from '../../common/utils';
 import { PrismaService } from '../../prisma/prisma.service';
 import { MAIL_JOB_SEND, QueueService } from '../queue';
 import { UsersService } from '../users/users.service';
@@ -81,6 +85,12 @@ export class AuthService {
     if (!user.isActive) {
       throw new ForbiddenException(
         'Account is not activated. Please check your email.',
+      );
+    }
+
+    if (user.mustChangePassword) {
+      throw new ForbiddenException(
+        'A password reset was requested for this account. Please change your password first.',
       );
     }
 
@@ -241,7 +251,7 @@ export class AuthService {
     }
 
     const hashedPassword = await hashPassword(newPassword);
-    await this.usersService.updatePassword(userId, hashedPassword);
+    await this.usersService.updatePassword(userId, hashedPassword, false);
     await this.revokeAllUserTokens(userId);
     await this.sendPasswordChangedEmail(
       user.email,
@@ -249,6 +259,31 @@ export class AuthService {
     );
 
     return this.generateTokens(user);
+  }
+
+  async requestNewPassword(email: string): Promise<MessageResponseDto> {
+    const message = {
+      message:
+        'If an account exists for this email, a new password has been sent.',
+    };
+
+    const user = await this.usersService.findByEmail(email);
+    if (!user) {
+      return message;
+    }
+
+    const temporaryPassword = generatePassword(16);
+    const hashedPassword = await hashPassword(temporaryPassword);
+
+    await this.usersService.updatePassword(user.id, hashedPassword, true);
+    await this.revokeAllUserTokens(user.id);
+    await this.sendResetPasswordEmail(
+      user.email,
+      `${user.name} ${user.surname}`.trim(),
+      temporaryPassword,
+    );
+
+    return message;
   }
 
   private validateEmailDomain(email: string): void {
@@ -331,6 +366,22 @@ export class AuthService {
       template: 'password-changed',
       context: {
         name,
+      },
+    });
+  }
+
+  private async sendResetPasswordEmail(
+    email: string,
+    name: string,
+    temporaryPassword: string,
+  ): Promise<void> {
+    await this.queueService.addMailJob(MAIL_JOB_SEND, {
+      to: email,
+      subject: 'Your temporary password',
+      template: 'reset-password',
+      context: {
+        name,
+        temporaryPassword,
       },
     });
   }

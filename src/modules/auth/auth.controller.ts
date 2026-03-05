@@ -18,6 +18,7 @@ import {
   MessageResponseDto,
   RefreshTokenDto,
   RegisterDto,
+  RequestNewPasswordDto,
   ResendActivationDto,
 } from './dto';
 import { AuthService } from './auth.service';
@@ -70,6 +71,16 @@ export class AuthController {
     @Body() resendActivationDto: ResendActivationDto,
   ): Promise<MessageResponseDto> {
     return this.authService.resendActivationCode(resendActivationDto.email);
+  }
+
+  @Public()
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  @Post('request-new-password')
+  @HttpCode(HttpStatus.OK)
+  requestNewPassword(
+    @Body() requestNewPasswordDto: RequestNewPasswordDto,
+  ): Promise<MessageResponseDto> {
+    return this.authService.requestNewPassword(requestNewPasswordDto.email);
   }
 
   @Public()

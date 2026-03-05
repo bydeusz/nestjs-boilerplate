@@ -38,6 +38,7 @@ model User {
   password        String
   isAdmin         Boolean          @default(false)
   isActive        Boolean          @default(false)
+  mustChangePassword Boolean       @default(false)
   avatarUrl       String?
   organisations   Organisation[]
   refreshTokens   RefreshToken[]

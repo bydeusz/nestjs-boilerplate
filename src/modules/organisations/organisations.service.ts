@@ -95,10 +95,7 @@ export class OrganisationsService {
     };
   }
 
-  async findOne(
-    id: string,
-    userId: string,
-  ): Promise<OrganisationResponseDto> {
+  async findOne(id: string, userId: string): Promise<OrganisationResponseDto> {
     const organisation = await this.prisma.organisation.findFirst({
       where: {
         id,
@@ -132,10 +129,7 @@ export class OrganisationsService {
     return this.toOrganisationResponseDto(organisation);
   }
 
-  async remove(
-    id: string,
-    userId: string,
-  ): Promise<OrganisationResponseDto> {
+  async remove(id: string, userId: string): Promise<OrganisationResponseDto> {
     await this.assertUserIsMember(id, userId);
 
     const organisation = await this.prisma.organisation.delete({
@@ -178,7 +172,9 @@ export class OrganisationsService {
     };
   }
 
-  private async resolveAssetUrl(assetRef: string | null): Promise<string | null> {
+  private async resolveAssetUrl(
+    assetRef: string | null,
+  ): Promise<string | null> {
     if (!assetRef) {
       return null;
     }
