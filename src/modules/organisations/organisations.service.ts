@@ -1,5 +1,10 @@
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import type { Cache } from 'cache-manager';
 import { PaginationQueryDto } from '../../common/dto';
 import { PaginatedResult } from '../../common/interfaces';
@@ -44,9 +49,13 @@ export class OrganisationsService {
 
   async create(
     createOrganisationDto: CreateOrganisationDto,
+    userId: string,
   ): Promise<OrganisationResponseDto> {
     const organisation = await this.prisma.organisation.create({
-      data: createOrganisationDto,
+      data: {
+        ...createOrganisationDto,
+        users: { connect: { id: userId } },
+      },
       select: organisationPublicSelect,
     });
 
@@ -57,19 +66,23 @@ export class OrganisationsService {
 
   async findAll(
     query: PaginationQueryDto,
+    userId: string,
   ): Promise<PaginatedResult<OrganisationResponseDto>> {
     const { skip, take } = buildPrismaSkipTake(query);
 
+    const where: Prisma.OrganisationWhereInput = {
+      users: { some: { id: userId } },
+    };
+
     const [items, total] = await this.prisma.$transaction([
       this.prisma.organisation.findMany({
-        orderBy: {
-          createdAt: 'desc',
-        },
+        where,
+        orderBy: { createdAt: 'desc' },
         select: organisationPublicSelect,
         skip,
         take,
       }),
-      this.prisma.organisation.count(),
+      this.prisma.organisation.count({ where }),
     ]);
 
     const data = await Promise.all(
@@ -82,9 +95,15 @@ export class OrganisationsService {
     };
   }
 
-  async findOne(id: string): Promise<OrganisationResponseDto> {
-    const organisation = await this.prisma.organisation.findUnique({
-      where: { id },
+  async findOne(
+    id: string,
+    userId: string,
+  ): Promise<OrganisationResponseDto> {
+    const organisation = await this.prisma.organisation.findFirst({
+      where: {
+        id,
+        users: { some: { id: userId } },
+      },
       select: organisationPublicSelect,
     });
 
@@ -98,8 +117,9 @@ export class OrganisationsService {
   async update(
     id: string,
     updateOrganisationDto: UpdateOrganisationDto,
+    userId: string,
   ): Promise<OrganisationResponseDto> {
-    await this.findOne(id);
+    await this.assertUserIsMember(id, userId);
 
     const organisation = await this.prisma.organisation.update({
       where: { id },
@@ -112,8 +132,11 @@ export class OrganisationsService {
     return this.toOrganisationResponseDto(organisation);
   }
 
-  async remove(id: string): Promise<OrganisationResponseDto> {
-    await this.findOne(id);
+  async remove(
+    id: string,
+    userId: string,
+  ): Promise<OrganisationResponseDto> {
+    await this.assertUserIsMember(id, userId);
 
     const organisation = await this.prisma.organisation.delete({
       where: { id },
@@ -123,6 +146,25 @@ export class OrganisationsService {
     await this.invalidateCache();
 
     return this.toOrganisationResponseDto(organisation);
+  }
+
+  private async assertUserIsMember(
+    organisationId: string,
+    userId: string,
+  ): Promise<void> {
+    const organisation = await this.prisma.organisation.findFirst({
+      where: {
+        id: organisationId,
+        users: { some: { id: userId } },
+      },
+      select: { id: true },
+    });
+
+    if (!organisation) {
+      throw new ForbiddenException(
+        'You do not have access to this organisation.',
+      );
+    }
   }
 
   private async toOrganisationResponseDto(
@@ -149,5 +191,4 @@ export class OrganisationsService {
       return null;
     }
   }
-
 }

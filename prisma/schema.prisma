@@ -31,21 +31,20 @@ model Organisation {
 }
 
 model User {
-  id             String       @id @default(uuid())
-  name           String
-  surname        String
-  email          String       @unique
-  password       String
-  isAdmin        Boolean      @default(false)
-  isActive       Boolean      @default(false)
-  avatarUrl      String?
-  organisationId String?
-  organisation   Organisation? @relation(fields: [organisationId], references: [id])
-  refreshTokens  RefreshToken[]
+  id              String           @id @default(uuid())
+  name            String
+  surname         String
+  email           String           @unique
+  password        String
+  isAdmin         Boolean          @default(false)
+  isActive        Boolean          @default(false)
+  avatarUrl       String?
+  organisations   Organisation[]
+  refreshTokens   RefreshToken[]
   activationCodes ActivationCode[]
-  files          File[]
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
+  files           File[]
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
 }
 
 enum FileScope {
