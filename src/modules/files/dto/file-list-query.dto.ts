@@ -1,13 +1,14 @@
-import { IsEnum, IsOptional, IsString } from 'class-validator';
+import { IsEnum, IsString } from 'class-validator';
 import { FileScope } from '../../../generated/prisma/client';
 import { PaginationQueryDto } from '../../../common/dto';
 
 export class FileListQueryDto extends PaginationQueryDto {
-  @IsOptional()
   @IsEnum(FileScope)
-  scope?: FileScope;
+  scope!: FileScope;
 
-  @IsOptional()
   @IsString()
-  folder?: string;
+  folder!: string;
+
+  @IsString()
+  mimeType!: string;
 }

@@ -7,6 +7,7 @@ import { PaginatedResult } from '../../common/interfaces';
 import { generatePassword, hashPassword } from '../../common/utils';
 import { buildPaginationMeta, buildPrismaSkipTake } from '../../common/utils';
 import { MAIL_JOB_SEND, QueueService } from '../queue';
+import { StorageService } from '../storage';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateUserDto, UpdateUserDto, UserResponseDto } from './dto';
 
@@ -22,12 +23,14 @@ const userPublicSelect = {
   createdAt: true,
   updatedAt: true,
 } satisfies Prisma.UserSelect;
+type UserPublic = Prisma.UserGetPayload<{ select: typeof userPublicSelect }>;
 
 @Injectable()
 export class UsersService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly queueService: QueueService,
+    private readonly storageService: StorageService,
     @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
   ) {}
 
@@ -66,7 +69,7 @@ export class UsersService {
 
     await this.invalidateCache();
 
-    return user;
+    return this.toUserResponseDto(user);
   }
 
   private async sendNewUserCredentialsEmail(
@@ -107,7 +110,7 @@ export class UsersService {
 
     await this.invalidateCache();
 
-    return user;
+    return this.toUserResponseDto(user);
   }
 
   async findAll(
@@ -127,8 +130,12 @@ export class UsersService {
       this.prisma.user.count(),
     ]);
 
+    const data = await Promise.all(
+      items.map((item) => this.toUserResponseDto(item)),
+    );
+
     return {
-      data: items,
+      data,
       meta: buildPaginationMeta(query, total),
     };
   }
@@ -143,7 +150,7 @@ export class UsersService {
       throw new NotFoundException('User not found.');
     }
 
-    return user;
+    return this.toUserResponseDto(user);
   }
 
   findByEmail(email: string): Promise<User | null> {
@@ -183,7 +190,7 @@ export class UsersService {
 
     await this.invalidateCache();
 
-    return user;
+    return this.toUserResponseDto(user);
   }
 
   async remove(id: string): Promise<UserResponseDto> {
@@ -196,6 +203,29 @@ export class UsersService {
 
     await this.invalidateCache();
 
-    return user;
+    return this.toUserResponseDto(user);
+  }
+
+  private async toUserResponseDto(user: UserPublic): Promise<UserResponseDto> {
+    const avatarUrl = await this.resolveAssetUrl(user.avatarUrl);
+
+    return {
+      ...user,
+      avatarUrl,
+    };
+  }
+
+  private async resolveAssetUrl(assetRef: string | null): Promise<string | null> {
+    if (!assetRef) {
+      return null;
+    }
+
+    const key = this.storageService.extractKeyFromUrl(assetRef);
+
+    try {
+      return await this.storageService.getSignedUrl(key);
+    } catch {
+      return null;
+    }
   }
 }

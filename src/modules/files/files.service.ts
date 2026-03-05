@@ -74,18 +74,14 @@ export class FilesService {
   }
 
   async findAllForUser(
-    userId: string,
-    organisationId: string | null,
     query: FileListQueryDto,
   ): Promise<PaginatedResult<FileResponseDto>> {
     const { skip, take } = buildPrismaSkipTake(query);
 
     const where: Prisma.FileWhereInput = {
-      AND: [
-        this.buildAccessFilter(userId, organisationId),
-        ...(query.scope ? [{ scope: query.scope as FileScope }] : []),
-        ...(query.folder ? [{ folder: query.folder }] : []),
-      ],
+      scope: query.scope,
+      folder: query.folder,
+      mimeType: query.mimeType,
     };
 
     const [items, total] = await this.prisma.$transaction([
@@ -110,8 +106,6 @@ export class FilesService {
 
   async findOne(
     fileId: string,
-    userId: string,
-    organisationId: string | null,
   ): Promise<FileResponseDto> {
     const file = await this.prisma.file.findUnique({
       where: { id: fileId },
@@ -120,8 +114,6 @@ export class FilesService {
     if (!file) {
       throw new NotFoundException('File not found.');
     }
-
-    this.assertAccess(file, userId, organisationId);
 
     return this.toResponseDto(file);
   }
@@ -129,7 +121,7 @@ export class FilesService {
   async deleteFile(
     fileId: string,
     userId: string,
-    organisationId: string | null,
+    isAdmin: boolean,
   ): Promise<FileResponseDto> {
     const file = await this.prisma.file.findUnique({
       where: { id: fileId },
@@ -139,7 +131,9 @@ export class FilesService {
       throw new NotFoundException('File not found.');
     }
 
-    this.assertAccess(file, userId, organisationId);
+    if (!isAdmin && file.userId !== userId) {
+      throw new ForbiddenException('You can only delete your own files.');
+    }
 
     await this.storageService.delete(file.key);
 
@@ -152,40 +146,6 @@ export class FilesService {
     });
 
     return this.toResponseDto(file);
-  }
-
-  private assertAccess(
-    file: { scope: FileScope; userId: string; organisationId: string | null },
-    userId: string,
-    organisationId: string | null,
-  ): void {
-    if (file.scope === FileScope.USER && file.userId === userId) return;
-    if (
-      file.scope === FileScope.ORGANISATION &&
-      file.organisationId != null &&
-      file.organisationId === organisationId
-    )
-      return;
-
-    throw new ForbiddenException('You do not have access to this file.');
-  }
-
-  private buildAccessFilter(
-    userId: string,
-    organisationId: string | null,
-  ): Prisma.FileWhereInput {
-    const conditions: Prisma.FileWhereInput[] = [
-      { scope: FileScope.USER, userId },
-    ];
-
-    if (organisationId) {
-      conditions.push({
-        scope: FileScope.ORGANISATION,
-        organisationId,
-      });
-    }
-
-    return { OR: conditions };
   }
 
   private buildScopeOwnerFolderFilter(
@@ -221,7 +181,7 @@ export class FilesService {
       await tx.user.update({
         where: { id: ownerId },
         data: {
-          avatarUrl: key ? this.storageService.getPublicUrl(key) : null,
+          avatarUrl: key ?? null,
         },
       });
     }
@@ -230,7 +190,7 @@ export class FilesService {
       await tx.organisation.update({
         where: { id: ownerId },
         data: {
-          logoUrl: key ? this.storageService.getPublicUrl(key) : null,
+          logoUrl: key ?? null,
         },
       });
     }

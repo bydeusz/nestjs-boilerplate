@@ -119,29 +119,29 @@ export class FilesController {
 
   @Get()
   findAll(
-    @CurrentUser('sub') userId: string,
-    @CurrentUser('organisationId') organisationId: string | null,
+    @CurrentUser('isAdmin') isAdmin: boolean,
     @Query() query: FileListQueryDto,
   ): Promise<PaginatedResult<FileResponseDto>> {
-    return this.filesService.findAllForUser(userId, organisationId, query);
+    void isAdmin;
+    return this.filesService.findAllForUser(query);
   }
 
   @Get(':id')
   findOne(
     @Param('id', ParseUUIDPipe) id: string,
-    @CurrentUser('sub') userId: string,
-    @CurrentUser('organisationId') organisationId: string | null,
+    @CurrentUser('isAdmin') isAdmin: boolean,
   ): Promise<FileResponseDto> {
-    return this.filesService.findOne(id, userId, organisationId);
+    void isAdmin;
+    return this.filesService.findOne(id);
   }
 
   @Delete(':id')
   remove(
     @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser('sub') userId: string,
-    @CurrentUser('organisationId') organisationId: string | null,
+    @CurrentUser('isAdmin') isAdmin: boolean,
   ): Promise<FileResponseDto> {
-    return this.filesService.deleteFile(id, userId, organisationId);
+    return this.filesService.deleteFile(id, userId, isAdmin);
   }
 
   private resolveScope(scope: string): FileScope {
