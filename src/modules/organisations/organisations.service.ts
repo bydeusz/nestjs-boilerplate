@@ -1,10 +1,10 @@
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import type { Cache } from 'cache-manager';
-import type { Express } from 'express';
 import { PaginationQueryDto } from '../../common/dto';
 import { PaginatedResult } from '../../common/interfaces';
 import { buildPaginationMeta, buildPrismaSkipTake } from '../../common/utils';
+import { Prisma } from '../../generated/prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { StorageService } from '../storage';
 import {
@@ -12,6 +12,23 @@ import {
   OrganisationResponseDto,
   UpdateOrganisationDto,
 } from './dto';
+
+const organisationPublicSelect = {
+  id: true,
+  name: true,
+  address: true,
+  postalCode: true,
+  city: true,
+  kvk: true,
+  vatNumber: true,
+  iban: true,
+  logoUrl: true,
+  createdAt: true,
+  updatedAt: true,
+} satisfies Prisma.OrganisationSelect;
+type OrganisationPublic = Prisma.OrganisationGetPayload<{
+  select: typeof organisationPublicSelect;
+}>;
 
 @Injectable()
 export class OrganisationsService {
@@ -30,11 +47,12 @@ export class OrganisationsService {
   ): Promise<OrganisationResponseDto> {
     const organisation = await this.prisma.organisation.create({
       data: createOrganisationDto,
+      select: organisationPublicSelect,
     });
 
     await this.invalidateCache();
 
-    return organisation;
+    return this.toOrganisationResponseDto(organisation);
   }
 
   async findAll(
@@ -47,27 +65,19 @@ export class OrganisationsService {
         orderBy: {
           createdAt: 'desc',
         },
-        select: {
-          id: true,
-          name: true,
-          address: true,
-          postalCode: true,
-          city: true,
-          kvk: true,
-          vatNumber: true,
-          iban: true,
-          logoUrl: true,
-          createdAt: true,
-          updatedAt: true,
-        },
+        select: organisationPublicSelect,
         skip,
         take,
       }),
       this.prisma.organisation.count(),
     ]);
 
+    const data = await Promise.all(
+      items.map((item) => this.toOrganisationResponseDto(item)),
+    );
+
     return {
-      data: items,
+      data,
       meta: buildPaginationMeta(query, total),
     };
   }
@@ -75,13 +85,14 @@ export class OrganisationsService {
   async findOne(id: string): Promise<OrganisationResponseDto> {
     const organisation = await this.prisma.organisation.findUnique({
       where: { id },
+      select: organisationPublicSelect,
     });
 
     if (!organisation) {
       throw new NotFoundException('Organisation not found.');
     }
 
-    return organisation;
+    return this.toOrganisationResponseDto(organisation);
   }
 
   async update(
@@ -93,11 +104,12 @@ export class OrganisationsService {
     const organisation = await this.prisma.organisation.update({
       where: { id },
       data: updateOrganisationDto,
+      select: organisationPublicSelect,
     });
 
     await this.invalidateCache();
 
-    return organisation;
+    return this.toOrganisationResponseDto(organisation);
   }
 
   async remove(id: string): Promise<OrganisationResponseDto> {
@@ -105,59 +117,37 @@ export class OrganisationsService {
 
     const organisation = await this.prisma.organisation.delete({
       where: { id },
+      select: organisationPublicSelect,
     });
 
     await this.invalidateCache();
 
-    return organisation;
+    return this.toOrganisationResponseDto(organisation);
   }
 
-  async uploadLogo(
-    id: string,
-    file: Express.Multer.File,
+  private async toOrganisationResponseDto(
+    organisation: OrganisationPublic,
   ): Promise<OrganisationResponseDto> {
-    const existingOrganisation = await this.findOne(id);
+    const logoUrl = await this.resolveAssetUrl(organisation.logoUrl);
 
-    if (existingOrganisation.logoUrl) {
-      const oldKey = this.storageService.extractKeyFromUrl(
-        existingOrganisation.logoUrl,
-      );
-      await this.storageService.delete(oldKey);
-    }
-
-    const uploadedFile = await this.storageService.upload(file, 'logos', id);
-
-    const organisation = await this.prisma.organisation.update({
-      where: { id },
-      data: {
-        logoUrl: uploadedFile.url,
-      },
-    });
-
-    await this.invalidateCache();
-
-    return organisation;
+    return {
+      ...organisation,
+      logoUrl,
+    };
   }
 
-  async removeLogo(id: string): Promise<OrganisationResponseDto> {
-    const existingOrganisation = await this.findOne(id);
-
-    if (existingOrganisation.logoUrl) {
-      const oldKey = this.storageService.extractKeyFromUrl(
-        existingOrganisation.logoUrl,
-      );
-      await this.storageService.delete(oldKey);
+  private async resolveAssetUrl(assetRef: string | null): Promise<string | null> {
+    if (!assetRef) {
+      return null;
     }
 
-    const organisation = await this.prisma.organisation.update({
-      where: { id },
-      data: {
-        logoUrl: null,
-      },
-    });
+    const key = this.storageService.extractKeyFromUrl(assetRef);
 
-    await this.invalidateCache();
-
-    return organisation;
+    try {
+      return await this.storageService.getSignedUrl(key);
+    } catch {
+      return null;
+    }
   }
+
 }

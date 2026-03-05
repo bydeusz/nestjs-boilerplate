@@ -1,12 +1,12 @@
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import type { Cache } from 'cache-manager';
-import type { Express } from 'express';
 import { Prisma, User } from '../../generated/prisma/client';
 import { PaginationQueryDto } from '../../common/dto';
 import { PaginatedResult } from '../../common/interfaces';
-import { hashPassword } from '../../common/utils';
+import { generatePassword, hashPassword } from '../../common/utils';
 import { buildPaginationMeta, buildPrismaSkipTake } from '../../common/utils';
+import { MAIL_JOB_SEND, QueueService } from '../queue';
 import { StorageService } from '../storage';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateUserDto, UpdateUserDto, UserResponseDto } from './dto';
@@ -23,11 +23,13 @@ const userPublicSelect = {
   createdAt: true,
   updatedAt: true,
 } satisfies Prisma.UserSelect;
+type UserPublic = Prisma.UserGetPayload<{ select: typeof userPublicSelect }>;
 
 @Injectable()
 export class UsersService {
   constructor(
     private readonly prisma: PrismaService,
+    private readonly queueService: QueueService,
     private readonly storageService: StorageService,
     @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
   ) {}
@@ -36,15 +38,18 @@ export class UsersService {
     await this.cacheManager.clear();
   }
 
-  async create(createUserDto: CreateUserDto): Promise<UserResponseDto> {
-    const { organisationId, password, isActive, ...rest } = createUserDto;
-    const hashedPassword = await hashPassword(password);
+  async create(
+    createUserDto: CreateUserDto,
+    organisationId: string | null,
+  ): Promise<UserResponseDto> {
+    const plainPassword = generatePassword();
+    const hashedPassword = await hashPassword(plainPassword);
 
     const user = await this.prisma.user.create({
       data: {
-        ...rest,
+        ...createUserDto,
         password: hashedPassword,
-        isActive: isActive ?? true,
+        isActive: true,
         ...(organisationId
           ? {
               organisation: {
@@ -56,9 +61,31 @@ export class UsersService {
       select: userPublicSelect,
     });
 
+    await this.sendNewUserCredentialsEmail(
+      user.email,
+      user.name,
+      plainPassword,
+    );
+
     await this.invalidateCache();
 
-    return user;
+    return this.toUserResponseDto(user);
+  }
+
+  private async sendNewUserCredentialsEmail(
+    email: string,
+    name: string,
+    password: string,
+  ): Promise<void> {
+    await this.queueService.addMailJob(MAIL_JOB_SEND, {
+      to: email,
+      subject: 'Your account has been created',
+      template: 'new-user-credentials',
+      context: {
+        name,
+        password,
+      },
+    });
   }
 
   async createFromRegistration(data: {
@@ -83,7 +110,7 @@ export class UsersService {
 
     await this.invalidateCache();
 
-    return user;
+    return this.toUserResponseDto(user);
   }
 
   async findAll(
@@ -103,8 +130,12 @@ export class UsersService {
       this.prisma.user.count(),
     ]);
 
+    const data = await Promise.all(
+      items.map((item) => this.toUserResponseDto(item)),
+    );
+
     return {
-      data: items,
+      data,
       meta: buildPaginationMeta(query, total),
     };
   }
@@ -119,7 +150,7 @@ export class UsersService {
       throw new NotFoundException('User not found.');
     }
 
-    return user;
+    return this.toUserResponseDto(user);
   }
 
   findByEmail(email: string): Promise<User | null> {
@@ -143,85 +174,23 @@ export class UsersService {
     await this.invalidateCache();
   }
 
-  async uploadAvatar(
-    id: string,
-    file: Express.Multer.File,
-  ): Promise<UserResponseDto> {
-    const existingUser = await this.findOne(id);
-
-    if (existingUser.avatarUrl) {
-      const oldKey = this.storageService.extractKeyFromUrl(
-        existingUser.avatarUrl,
-      );
-      await this.storageService.delete(oldKey);
-    }
-
-    const uploadedFile = await this.storageService.upload(file, 'avatars', id);
-
-    const updatedUser = await this.prisma.user.update({
-      where: { id },
-      data: {
-        avatarUrl: uploadedFile.url,
-      },
-      select: userPublicSelect,
-    });
-
-    await this.invalidateCache();
-
-    return updatedUser;
-  }
-
-  async removeAvatar(id: string): Promise<UserResponseDto> {
-    const existingUser = await this.findOne(id);
-
-    if (existingUser.avatarUrl) {
-      const oldKey = this.storageService.extractKeyFromUrl(
-        existingUser.avatarUrl,
-      );
-      await this.storageService.delete(oldKey);
-    }
-
-    const updatedUser = await this.prisma.user.update({
-      where: { id },
-      data: {
-        avatarUrl: null,
-      },
-      select: userPublicSelect,
-    });
-
-    await this.invalidateCache();
-
-    return updatedUser;
-  }
-
   async update(
     id: string,
     updateUserDto: UpdateUserDto,
   ): Promise<UserResponseDto> {
     await this.findOne(id);
 
-    const { organisationId, password, ...rest } = updateUserDto;
-    const hashedPassword = password ? await hashPassword(password) : undefined;
-
     const user = await this.prisma.user.update({
       where: { id },
       data: {
-        ...rest,
-        ...(hashedPassword ? { password: hashedPassword } : {}),
-        ...(organisationId
-          ? {
-              organisation: {
-                connect: { id: organisationId },
-              },
-            }
-          : {}),
+        ...updateUserDto,
       },
       select: userPublicSelect,
     });
 
     await this.invalidateCache();
 
-    return user;
+    return this.toUserResponseDto(user);
   }
 
   async remove(id: string): Promise<UserResponseDto> {
@@ -234,6 +203,29 @@ export class UsersService {
 
     await this.invalidateCache();
 
-    return user;
+    return this.toUserResponseDto(user);
+  }
+
+  private async toUserResponseDto(user: UserPublic): Promise<UserResponseDto> {
+    const avatarUrl = await this.resolveAssetUrl(user.avatarUrl);
+
+    return {
+      ...user,
+      avatarUrl,
+    };
+  }
+
+  private async resolveAssetUrl(assetRef: string | null): Promise<string | null> {
+    if (!assetRef) {
+      return null;
+    }
+
+    const key = this.storageService.extractKeyFromUrl(assetRef);
+
+    try {
+      return await this.storageService.getSignedUrl(key);
+    } catch {
+      return null;
+    }
   }
 }

@@ -6,8 +6,7 @@ export async function seedUsers(
   prisma: PrismaClient,
   organisationIds: SeededOrganisationIds,
 ): Promise<void> {
-  const adminPasswordHash = await hashPassword('Admin123!');
-  const userPasswordHash = await hashPassword('User123!');
+  const PasswordHash = await hashPassword('Admin123!');
   const bydeuszOrganisationId = organisationIds.bydeusz;
 
   await prisma.user.upsert({
@@ -15,7 +14,7 @@ export async function seedUsers(
     update: {
       name: 'john',
       surname: 'doe',
-      password: adminPasswordHash,
+      password: PasswordHash,
       isAdmin: true,
       isActive: true,
       organisation: {
@@ -26,7 +25,7 @@ export async function seedUsers(
       name: 'John',
       surname: 'Doe',
       email: 'john.doe@bydeusz.com',
-      password: adminPasswordHash,
+      password: PasswordHash,
       isAdmin: true,
       isActive: true,
       organisation: {
@@ -40,7 +39,7 @@ export async function seedUsers(
     update: {
       name: 'John',
       surname: 'Smith',
-      password: userPasswordHash,
+      password: PasswordHash,
       isAdmin: false,
       isActive: true,
       organisation: {
@@ -51,7 +50,7 @@ export async function seedUsers(
       name: 'John',
       surname: 'Smith',
       email: 'john.smith@bydeusz.com',
-      password: userPasswordHash,
+      password: PasswordHash,
       isAdmin: false,
       isActive: true,
       organisation: {

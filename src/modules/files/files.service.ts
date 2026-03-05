@@ -18,71 +18,70 @@ export class FilesService {
     private readonly storageService: StorageService,
   ) {}
 
-  async uploadUserFile(
-    userId: string,
+  async upload(
+    scope: FileScope,
+    ownerId: string,
+    actorUserId: string,
     folder: string,
     file: Express.Multer.File,
+    replace = false,
   ): Promise<FileResponseDto> {
     const cleanName = this.sanitizeFilename(file.originalname);
-    const key = `uploads/${userId}/${folder}/${Date.now()}-${cleanName}`;
+    const key = `${scope.toLowerCase()}/${ownerId}/${folder}/${Date.now()}-${cleanName}`;
+
+    const existingFiles = replace
+      ? await this.prisma.file.findMany({
+          where: this.buildScopeOwnerFolderFilter(scope, ownerId, folder),
+        })
+      : [];
+
+    for (const existingFile of existingFiles) {
+      await this.storageService.delete(existingFile.key);
+    }
 
     await this.storageService.uploadWithKey(file, key);
 
-    const record = await this.prisma.file.create({
-      data: {
-        originalName: file.originalname,
-        mimeType: file.mimetype,
-        size: file.size,
-        key,
-        folder,
-        scope: FileScope.USER,
-        userId,
-      },
-    });
+    const record = await this.prisma.$transaction(async (tx) => {
+      if (existingFiles.length > 0) {
+        await tx.file.deleteMany({
+          where: {
+            id: {
+              in: existingFiles.map((existingFile) => existingFile.id),
+            },
+          },
+        });
+      }
 
-    return this.toResponseDto(record);
-  }
+      const createdFile = await tx.file.create({
+        data: {
+          originalName: file.originalname,
+          mimeType: file.mimetype,
+          size: file.size,
+          key,
+          folder,
+          scope,
+          userId: scope === FileScope.USER ? ownerId : actorUserId,
+          organisationId: scope === FileScope.ORGANISATION ? ownerId : null,
+        },
+      });
 
-  async uploadOrganisationFile(
-    userId: string,
-    organisationId: string,
-    folder: string,
-    file: Express.Multer.File,
-  ): Promise<FileResponseDto> {
-    const cleanName = this.sanitizeFilename(file.originalname);
-    const key = `uploads/${organisationId}/${folder}/${Date.now()}-${cleanName}`;
+      await this.syncEntityAssetUrl(tx, scope, ownerId, folder, key);
 
-    await this.storageService.uploadWithKey(file, key);
-
-    const record = await this.prisma.file.create({
-      data: {
-        originalName: file.originalname,
-        mimeType: file.mimetype,
-        size: file.size,
-        key,
-        folder,
-        scope: FileScope.ORGANISATION,
-        userId,
-        organisationId,
-      },
+      return createdFile;
     });
 
     return this.toResponseDto(record);
   }
 
   async findAllForUser(
-    userId: string,
-    organisationId: string | null,
     query: FileListQueryDto,
   ): Promise<PaginatedResult<FileResponseDto>> {
     const { skip, take } = buildPrismaSkipTake(query);
 
     const where: Prisma.FileWhereInput = {
-      AND: [
-        this.buildAccessFilter(userId, organisationId),
-        ...(query.scope ? [{ scope: query.scope as FileScope }] : []),
-        ...(query.folder ? [{ folder: query.folder }] : []),
-      ],
+      scope: query.scope,
+      folder: query.folder,
+      mimeType: query.mimeType,
     };
 
     const [items, total] = await this.prisma.$transaction([
@@ -107,8 +106,6 @@ export class FilesService {
 
   async findOne(
     fileId: string,
-    userId: string,
-    organisationId: string | null,
   ): Promise<FileResponseDto> {
     const file = await this.prisma.file.findUnique({
       where: { id: fileId },
@@ -117,8 +114,6 @@ export class FilesService {
     if (!file) {
       throw new NotFoundException('File not found.');
     }
-
-    this.assertAccess(file, userId, organisationId);
 
     return this.toResponseDto(file);
   }
@@ -126,7 +121,7 @@ export class FilesService {
   async deleteFile(
     fileId: string,
     userId: string,
-    organisationId: string | null,
+    isAdmin: boolean,
   ): Promise<FileResponseDto> {
     const file = await this.prisma.file.findUnique({
       where: { id: fileId },
@@ -136,49 +131,69 @@ export class FilesService {
       throw new NotFoundException('File not found.');
     }
 
-    this.assertAccess(file, userId, organisationId);
+    if (!isAdmin && file.userId !== userId) {
+      throw new ForbiddenException('You can only delete your own files.');
+    }
 
     await this.storageService.delete(file.key);
 
-    await this.prisma.file.delete({
-      where: { id: fileId },
+    await this.prisma.$transaction(async (tx) => {
+      await tx.file.delete({
+        where: { id: fileId },
+      });
+
+      await this.syncEntityAssetUrl(tx, file.scope, this.getOwnerId(file), file.folder);
     });
 
     return this.toResponseDto(file);
   }
 
-  private assertAccess(
-    file: { scope: FileScope; userId: string; organisationId: string | null },
-    userId: string,
-    organisationId: string | null,
-  ): void {
-    if (file.scope === FileScope.USER && file.userId === userId) return;
-    if (
-      file.scope === FileScope.ORGANISATION &&
-      file.organisationId != null &&
-      file.organisationId === organisationId
-    )
-      return;
-
-    throw new ForbiddenException('You do not have access to this file.');
+  private buildScopeOwnerFolderFilter(
+    scope: FileScope,
+    ownerId: string,
+    folder: string,
+  ): Prisma.FileWhereInput {
+    return {
+      scope,
+      folder,
+      ...(scope === FileScope.USER
+        ? { userId: ownerId }
+        : { organisationId: ownerId }),
+    };
   }
 
-  private buildAccessFilter(
-    userId: string,
-    organisationId: string | null,
-  ): Prisma.FileWhereInput {
-    const conditions: Prisma.FileWhereInput[] = [
-      { scope: FileScope.USER, userId },
-    ];
+  private getOwnerId(file: {
+    scope: FileScope;
+    userId: string;
+    organisationId: string | null;
+  }): string {
+    return file.scope === FileScope.USER ? file.userId : (file.organisationId ?? '');
+  }
 
-    if (organisationId) {
-      conditions.push({
-        scope: FileScope.ORGANISATION,
-        organisationId,
+  private async syncEntityAssetUrl(
+    tx: Prisma.TransactionClient,
+    scope: FileScope,
+    ownerId: string,
+    folder: string,
+    key?: string,
+  ): Promise<void> {
+    if (scope === FileScope.USER && folder === 'avatar') {
+      await tx.user.update({
+        where: { id: ownerId },
+        data: {
+          avatarUrl: key ?? null,
+        },
       });
     }
 
-    return { OR: conditions };
+    if (scope === FileScope.ORGANISATION && folder === 'logo') {
+      await tx.organisation.update({
+        where: { id: ownerId },
+        data: {
+          logoUrl: key ?? null,
+        },
+      });
+    }
   }
 
   private async toResponseDto(file: {
