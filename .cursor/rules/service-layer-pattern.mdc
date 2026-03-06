@@ -1,0 +1,36 @@
+---
+description: Service layer patterns for Prisma, pagination, cache, and DTO mapping
+globs: src/modules/**/*.service.ts
+alwaysApply: false
+---
+
+# Service layer pattern
+
+## Prisma typing
+
+- Definieer een `*PublicSelect` constant met `satisfies Prisma.*Select`.
+- Definieer een `*Public` payload type met `Prisma.*GetPayload`.
+- Gebruik deze select consequent in `findMany`, `findUnique`, `create`, `update`, `delete`.
+
+## Mutaties en cache
+
+- Injecteer `CACHE_MANAGER` als cache gebruikt wordt.
+- Houd `private invalidateCache(): Promise<void>` aan.
+- Roep cache invalidatie aan na elke mutatie (`create`, `update`, `remove`).
+
+## Paginatie
+
+- Gebruik `buildPrismaSkipTake(query)` voor `skip/take`.
+- Gebruik `$transaction([findMany, count])` voor data + total.
+- Retourneer `{ data, meta: buildPaginationMeta(query, total) }`.
+
+## Mapping en assets
+
+- Map Prisma payloads naar response DTOs in `private to*ResponseDto()`.
+- Gebruik `resolveAssetUrl()` voor signed URLs via `StorageService`.
+- Vang storage URL errors af en return `null` als fallback.
+
+## Fouten en toegang
+
+- Gooi `NotFoundException` voor ontbrekende records.
+- Plaats domein-toegangschecks in private `assert*` helpers.

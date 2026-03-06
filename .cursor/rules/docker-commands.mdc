@@ -1,0 +1,27 @@
+---
+description: Docker development and production workflow conventions
+globs: "{_docker/**,Dockerfile,docker-compose*.yml}"
+alwaysApply: false
+---
+
+# Docker workflow
+
+## Compose scopes
+
+- Development compose runt alleen infra (Postgres, Redis, MinIO, Mailpit).
+- Production compose runt infra plus `migrate`, `api` en `worker`.
+- API en worker blijven gescheiden processen.
+
+## Commando's
+
+- Start dev infra met `npm run docker:up`.
+- Stop infra met `npm run docker:down`.
+- Reset volumes met `npm run docker:reset`.
+- Build prod images met `npm run docker:prod:build`.
+- Start/stop prod stack met `npm run docker:prod:up` en `npm run docker:prod:down`.
+
+## Build en runtime
+
+- Houd Dockerfile multi-stage (deps, build, migrate, prod-deps, production).
+- Voer migraties in prod via dedicated `migrate` service uit voordat API start.
+- Behoud healthchecks voor database, redis, storage en API.

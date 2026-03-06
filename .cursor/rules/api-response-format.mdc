@@ -1,0 +1,27 @@
+---
+description: API response and error envelope conventions with interceptor and filter
+globs: "{src/common/interceptors/**,src/common/filters/**,src/common/interfaces/**}"
+alwaysApply: false
+---
+
+# API response format
+
+## Success envelope
+
+- Laat `TransformInterceptor` responses wrappen als:
+  `{ success, statusCode, data, meta, requestId, timestamp, path }`.
+- Services met paginatie retourneren `{ data, meta }`; interceptor behoudt `meta`.
+- Gebruik `@SkipTransform()` alleen voor endpoints die een eigen shape vereisen.
+
+## Error envelope
+
+- Alle errors lopen via `AllExceptionsFilter`.
+- Error shape blijft:
+  `{ success: false, statusCode, message, error, requestId, timestamp, path }`.
+- Gebruik Nest exceptions (`BadRequestException`, `ForbiddenException`, etc.) in domain code.
+
+## Prisma errors
+
+- Behoud Prisma-to-HTTP mapping in de exception filter.
+- Voeg nieuwe Prisma error codes alleen centraal toe in `AllExceptionsFilter`.
+- Vermijd ad-hoc Prisma error mapping in controllers/services.

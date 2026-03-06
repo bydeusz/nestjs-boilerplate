@@ -1,0 +1,28 @@
+---
+description: Environment and ConfigModule conventions for validated runtime config
+globs: src/config/**
+alwaysApply: false
+---
+
+# Environment configuration
+
+## Bronnen
+
+- Definieer config mapping in `src/config/configuration.ts`.
+- Valideer env vars in `src/config/env.validation.ts`.
+- Houd defaults en type-conversies centraal in deze configlaag.
+
+## Nieuwe env variabele
+
+Bij toevoegen van een variabele:
+
+1. Voeg toe aan `.env.example`.
+2. Voeg validatie toe in `env.validation.ts`.
+3. Map de variabele in `configuration.ts`.
+4. Gebruik de variabele via `ConfigService` in modules/services.
+
+## Gebruik
+
+- Gebruik `configService.get('nested.key')` of `getOrThrow()`.
+- Vermijd directe `process.env` reads in feature code.
+- Group keys logisch (`app`, `jwt`, `database`, `redis`, `smtp`, `storage`).

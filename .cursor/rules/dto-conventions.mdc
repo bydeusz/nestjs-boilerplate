@@ -1,0 +1,31 @@
+---
+description: Request and response DTO conventions for module APIs
+globs: "{src/modules/**/dto/**/*.dto.ts,src/common/dto/**/*.dto.ts}"
+alwaysApply: false
+---
+
+# DTO conventions
+
+## Type splits
+
+- Gebruik request DTOs voor input: `Create*Dto`, `Update*Dto`, `*QueryDto`, `*ParamsDto`.
+- Gebruik response DTOs voor output: `*ResponseDto`.
+- Response DTOs extenden `BaseEntityDto` waar relevant.
+
+## Request DTO regels
+
+- Valideer met `class-validator` decorators.
+- Gebruik `@ApiProperty()` of `@ApiPropertyOptional()` voor Swagger.
+- Gebruik `@Type(() => Number)` voor numerieke query velden.
+- Gebruik `@Transform()` alleen als type-conversie niet met `@Type` kan.
+
+## Response DTO regels
+
+- Geen `class-validator` decorators.
+- Definieer velden met definite assignment (`field!: type`).
+- Houd response DTOs stabiel en los van Prisma model internals.
+
+## Structuur
+
+- Plaats DTOs in `dto/` per module.
+- Voeg altijd `dto/index.ts` toe voor barrel exports.

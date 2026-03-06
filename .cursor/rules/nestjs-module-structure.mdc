@@ -1,0 +1,30 @@
+---
+description: Module folder and file structure conventions for NestJS features
+globs: src/modules/**/*.module.ts
+alwaysApply: false
+---
+
+# NestJS module structure
+
+Gebruik per feature module deze opbouw:
+
+```text
+src/modules/<name>/
+  <name>.module.ts
+  <name>.controller.ts
+  <name>.service.ts
+  <name>.prisma
+  dto/
+    create-<name>.dto.ts
+    update-<name>.dto.ts
+    <name>-response.dto.ts
+    index.ts
+```
+
+## Conventies
+
+- Houd de module map self-contained: controller, service, dto en prisma-fragment bij elkaar.
+- Exporteer de service in `<name>.module.ts` als andere modules die service gebruiken.
+- Importeer `QueueModule.register('producer')` alleen als de module jobs enqueued.
+- Gebruik een module-level `index.ts` voor exports naar buiten.
+- Vermijd business logic in modules; die hoort in de service.

@@ -1,0 +1,29 @@
+---
+description: Mail module conventions for Handlebars templates and queued delivery
+globs: src/modules/mail/**
+alwaysApply: false
+---
+
+# Mail templates and delivery
+
+## Template regels
+
+- Plaats templates in `src/modules/mail/templates/*.hbs`.
+- Gebruik consistente context keys (`name`, `code`, `temporaryPassword`, etc.).
+- Gebruik als template id altijd de bestandsnaam zonder `.hbs`.
+
+## Delivery regels
+
+- Verstuur mail via queue, niet direct vanuit feature services.
+- Gebruik `QueueService.addMailJob(MAIL_JOB_SEND, payload)` als standaard.
+- Payload bevat minimaal: `to`, `subject`, `template`, `context`.
+
+## Rendering regels
+
+- Houd rendering centraal in `MailService`.
+- Gebruik `MailService.renderTemplate()` als enige plek voor compile logic.
+- Houd template business logic minimaal; beperk tot simpele placeholders.
+
+## Build regels
+
+- Nieuwe `.hbs` templates hoeven niet extra geconfigureerd te worden zolang ze in `src/**` staan (asset copy staat al in `nest-cli.json`).

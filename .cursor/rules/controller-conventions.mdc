@@ -1,0 +1,28 @@
+---
+description: Controller conventions for decorators, auth checks, and service delegation
+globs: src/modules/**/*.controller.ts
+alwaysApply: false
+---
+
+# Controller conventions
+
+## Class-level defaults
+
+- Gebruik `@Controller('resource')`, `@ApiTags('Resource')`, `@ApiBearerAuth()`.
+- Gebruik class-level `@Roles(...)` alleen als dit de baseline voor alle routes is.
+- Gebruik `@UseInterceptors(CacheInterceptor)` op read-heavy controllers.
+
+## Method-level regels
+
+- Gebruik `@Roles(Role.Admin, Role.User)` voor route-specifieke toegang.
+- Gebruik `@Public()` voor routes zonder JWT.
+- Gebruik `@CacheTTL(ms)` op GET routes met cache.
+- Gebruik `@Param('id', ParseUUIDPipe)` voor UUID path parameters.
+- Gebruik `@CurrentUser('sub')` en `@CurrentUser('isAdmin')` voor context.
+
+## Verantwoordelijkheden
+
+- Controllers valideren input en autorisatievoorwaarden op route-niveau.
+- Controllers delegeren business logic naar de service.
+- Houd return types expliciet (`Promise<ResponseDto>` of paginated variant).
+- Vermijd directe Prisma calls in controllers.
