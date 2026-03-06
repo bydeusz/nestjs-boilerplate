@@ -1,0 +1,31 @@
+---
+description: Prisma multi-file schema conventions for module-based models
+globs: "{schema.prisma,src/modules/**/*.prisma,prisma/**/*.prisma}"
+alwaysApply: false
+---
+
+# Prisma schema per module
+
+Gebruik in dit project een modulaire Prisma schema-structuur:
+
+- Hoofdbestand is `schema.prisma` op project-root en bevat alleen `generator` en `datasource`.
+- Modelleer per module in `src/modules/<module>/<module>.prisma`.
+- Plaats enums in hetzelfde modulebestand als waar ze primair gebruikt worden.
+
+## Nieuw model toevoegen
+
+1. Kies de juiste modulemap: `src/modules/<module>/`.
+2. Voeg het model toe aan `src/modules/<module>/<module>.prisma`.
+3. Voeg relaties naar andere modellen toe met normale Prisma-relaties (cross-file is toegestaan).
+4. Pas alleen `schema.prisma` aan als `generator`/`datasource` echt moet wijzigen.
+5. Draai na wijzigingen:
+   - `npx prisma validate`
+   - `npx prisma generate`
+   - daarna pas `npx prisma migrate dev` (indien schemawijziging)
+
+## Conventies
+
+- Houd modelnamen enkelvoudig in PascalCase (`User`, `Organisation`).
+- Houd velden in camelCase.
+- Voeg waar nodig indexes en `onDelete`-gedrag expliciet toe.
+- Voorkom nieuwe modellen in het hoofdbestand `schema.prisma`.
