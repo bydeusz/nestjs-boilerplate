@@ -1,5 +1,10 @@
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import type { Cache } from 'cache-manager';
 import { Prisma, User } from '../../generated/prisma/client';
 import { PaginationQueryDto } from '../../common/dto';
@@ -190,6 +195,83 @@ export class UsersService {
       data: {
         ...updateUserDto,
       },
+      select: userPublicSelect,
+    });
+
+    await this.invalidateCache();
+
+    return this.toUserResponseDto(user);
+  }
+
+  async updateAdminRoleForOrganisationUser(
+    targetUserId: string,
+    currentUserId: string,
+    isAdmin?: boolean,
+    organisationIds?: string[],
+  ): Promise<UserResponseDto> {
+    if (targetUserId === currentUserId) {
+      throw new ForbiddenException(
+        'You cannot change your own admin status via this route.',
+      );
+    }
+
+    const [currentUser, targetUser] = await Promise.all([
+      this.prisma.user.findUnique({
+        where: { id: currentUserId },
+        select: {
+          id: true,
+          organisations: { select: { id: true } },
+        },
+      }),
+      this.prisma.user.findUnique({
+        where: { id: targetUserId },
+        select: {
+          ...userPublicSelect,
+          organisations: { select: { id: true } },
+        },
+      }),
+    ]);
+
+    if (!currentUser) {
+      throw new NotFoundException('Current user not found.');
+    }
+
+    if (!targetUser) {
+      throw new NotFoundException('User not found.');
+    }
+
+    const currentOrganisationIds = new Set(
+      currentUser.organisations.map((org) => org.id),
+    );
+    const targetOrganisationIds = targetUser.organisations.map((org) => org.id);
+    const resultingOrganisationIds = Array.isArray(organisationIds)
+      ? organisationIds
+      : targetOrganisationIds;
+    const hasSharedOrganisation = resultingOrganisationIds.some((orgId) =>
+      currentOrganisationIds.has(orgId),
+    );
+
+    if (!hasSharedOrganisation) {
+      throw new ForbiddenException(
+        'You can only manage users for organisations you belong to.',
+      );
+    }
+
+    const data: Prisma.UserUpdateInput = {};
+
+    if (typeof isAdmin === 'boolean') {
+      data.isAdmin = isAdmin;
+    }
+
+    if (Array.isArray(organisationIds)) {
+      data.organisations = {
+        set: organisationIds.map((id) => ({ id })),
+      };
+    }
+
+    const user = await this.prisma.user.update({
+      where: { id: targetUserId },
+      data,
       select: userPublicSelect,
     });
 

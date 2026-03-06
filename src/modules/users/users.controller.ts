@@ -17,7 +17,11 @@ import { PaginationQueryDto } from '../../common/dto';
 import { CurrentUser, Roles } from '../../common/decorators';
 import { Role } from '../../common/enums';
 import { PaginatedResult } from '../../common/interfaces';
-import { CreateUserDto, UpdateUserDto, UserResponseDto } from './dto';
+import {
+  CreateUserDto,
+  UpdateUserDto,
+  UserResponseDto,
+} from './dto';
 import { UsersService } from './users.service';
 
 @Controller('users')
@@ -67,26 +71,24 @@ export class UsersController {
     @CurrentUser('sub') currentUserId: string,
     @CurrentUser('isAdmin') isAdmin: boolean,
   ): Promise<UserResponseDto> {
-    const isAdminUpdateRequested = typeof updateUserDto.isAdmin === 'boolean';
+    const isAdminValue = updateUserDto.isAdmin;
+    const isAdminUpdateRequested = typeof isAdminValue === 'boolean';
+    const organisationIdsValue = updateUserDto.organisationIds;
+    const organisationUpdateRequested = Array.isArray(organisationIdsValue);
 
-    if (isAdminUpdateRequested) {
+    if (isAdminUpdateRequested || organisationUpdateRequested) {
       if (!isAdmin) {
         throw new ForbiddenException(
-          'Only admins can change the isAdmin flag.',
+          'Only admins can change isAdmin or organisationIds.',
         );
       }
 
-      const hasOtherFieldsBesidesIsAdmin = Object.keys(updateUserDto).some(
-        (key) => key !== 'isAdmin',
+      return this.usersService.updateAdminRoleForOrganisationUser(
+        id,
+        currentUserId,
+        isAdminValue,
+        organisationIdsValue,
       );
-
-      if (hasOtherFieldsBesidesIsAdmin) {
-        throw new ForbiddenException(
-          'Admin updates via this route can only change isAdmin.',
-        );
-      }
-
-      return this.usersService.update(id, updateUserDto);
     }
 
     if (currentUserId !== id) {
