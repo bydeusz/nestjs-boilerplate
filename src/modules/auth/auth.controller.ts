@@ -2,12 +2,13 @@ import {
   Body,
   Controller,
   ForbiddenException,
+  Get,
   HttpCode,
   HttpStatus,
   Post,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { CurrentUser, Public } from '../../common/decorators';
 import {
@@ -21,6 +22,7 @@ import {
   RequestNewPasswordDto,
   ResendActivationDto,
 } from './dto';
+import { UserResponseDto } from '../users/dto';
 import { AuthService } from './auth.service';
 
 @Controller('auth')
@@ -34,6 +36,7 @@ export class AuthController {
 
   @Public()
   @Throttle({ default: { limit: 5, ttl: 60000 } })
+  @ApiOperation({ operationId: 'AuthLogin' })
   @Post('login')
   @HttpCode(HttpStatus.OK)
   login(@Body() loginDto: LoginDto): Promise<AuthTokensResponseDto> {
@@ -42,6 +45,7 @@ export class AuthController {
 
   @Public()
   @Throttle({ default: { limit: 5, ttl: 60000 } })
+  @ApiOperation({ operationId: 'AuthRegister' })
   @Post('register')
   register(@Body() registerDto: RegisterDto): Promise<MessageResponseDto> {
     const registrationEnabled = this.configService.get<boolean>(
@@ -57,6 +61,7 @@ export class AuthController {
 
   @Public()
   @Throttle({ default: { limit: 5, ttl: 60000 } })
+  @ApiOperation({ operationId: 'AuthActivate' })
   @Post('activate')
   @HttpCode(HttpStatus.OK)
   activate(@Body() activateDto: ActivateDto): Promise<AuthTokensResponseDto> {
@@ -65,6 +70,7 @@ export class AuthController {
 
   @Public()
   @Throttle({ default: { limit: 5, ttl: 60000 } })
+  @ApiOperation({ operationId: 'AuthResendActivation' })
   @Post('resend-activation')
   @HttpCode(HttpStatus.OK)
   resendActivationCode(
@@ -75,6 +81,7 @@ export class AuthController {
 
   @Public()
   @Throttle({ default: { limit: 5, ttl: 60000 } })
+  @ApiOperation({ operationId: 'AuthRequestNewPassword' })
   @Post('request-new-password')
   @HttpCode(HttpStatus.OK)
   requestNewPassword(
@@ -84,6 +91,7 @@ export class AuthController {
   }
 
   @Public()
+  @ApiOperation({ operationId: 'AuthRefresh' })
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
   refresh(
@@ -92,6 +100,7 @@ export class AuthController {
     return this.authService.refreshTokens(refreshTokenDto.refresh_token);
   }
 
+  @ApiOperation({ operationId: 'AuthLogout' })
   @Post('logout')
   @HttpCode(HttpStatus.OK)
   async logout(
@@ -101,6 +110,7 @@ export class AuthController {
     return { message: 'Logged out.' };
   }
 
+  @ApiOperation({ operationId: 'AuthChangePassword' })
   @Post('change-password')
   @HttpCode(HttpStatus.OK)
   changePassword(
@@ -112,5 +122,12 @@ export class AuthController {
       changePasswordDto.currentPassword,
       changePasswordDto.newPassword,
     );
+  }
+
+  @ApiOperation({ operationId: 'AuthMeGet' })
+  @Get('me')
+  @HttpCode(HttpStatus.OK)
+  me(@CurrentUser('sub') userId: string): Promise<UserResponseDto> {
+    return this.authService.getCurrentUser(userId);
   }
 }

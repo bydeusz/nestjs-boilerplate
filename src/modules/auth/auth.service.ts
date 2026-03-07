@@ -18,6 +18,7 @@ import {
 import { PrismaService } from '../../prisma/prisma.service';
 import { MAIL_JOB_SEND, QueueService } from '../queue';
 import { UsersService } from '../users/users.service';
+import { UserResponseDto } from '../users/dto';
 import {
   AuthTokensResponseDto,
   LoginDto,
@@ -284,6 +285,10 @@ export class AuthService {
     );
 
     return message;
+  }
+
+  getCurrentUser(userId: string): Promise<UserResponseDto> {
+    return this.usersService.findOne(userId);
   }
 
   private validateEmailDomain(email: string): void {

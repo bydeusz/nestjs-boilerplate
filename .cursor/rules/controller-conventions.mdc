@@ -19,6 +19,14 @@ alwaysApply: false
 - Gebruik `@CacheTTL(ms)` op GET routes met cache.
 - Gebruik `@Param('id', ParseUUIDPipe)` voor UUID path parameters.
 - Gebruik `@CurrentUser('sub')` en `@CurrentUser('isAdmin')` voor context.
+- Gebruik `@ApiOperation({ operationId: '...' })` op elke HTTP-route (`@Get`, `@Post`, `@Put`, `@Patch`, `@Delete`).
+
+## OperationId naming
+
+- OperationId moet geen `use` prefix bevatten.
+- Gebruik formaat `<Resource><Action>` in PascalCase, bijvoorbeeld `UserGet`, `UserGetList`, `UserCreate`, `UserUpdate`, `UserDelete`.
+- Gebruik een enkelvoudige resource-naam waar logisch (`User`, `Organisation`, `File`, `Auth`, `Health`, `App`).
+- Zorg dat elke `operationId` uniek is binnen de API.
 
 ## Verantwoordelijkheden
 

@@ -11,7 +11,7 @@ import {
   Query,
   UseInterceptors,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { PaginationQueryDto } from '../../common/dto';
 import { CurrentUser, Roles } from '../../common/decorators';
 import { Role } from '../../common/enums';
@@ -30,6 +30,7 @@ import { OrganisationsService } from './organisations.service';
 export class OrganisationsController {
   constructor(private readonly organisationsService: OrganisationsService) {}
 
+  @ApiOperation({ operationId: 'OrganisationCreate' })
   @Post()
   @Roles(Role.Admin)
   create(
@@ -39,6 +40,7 @@ export class OrganisationsController {
     return this.organisationsService.create(createOrganisationDto, userId);
   }
 
+  @ApiOperation({ operationId: 'OrganisationGetList' })
   @Get()
   @Roles(Role.Admin, Role.User)
   @CacheTTL(30000)
@@ -49,6 +51,7 @@ export class OrganisationsController {
     return this.organisationsService.findAll(query, userId);
   }
 
+  @ApiOperation({ operationId: 'OrganisationGet' })
   @Get(':id')
   @Roles(Role.Admin, Role.User)
   @CacheTTL(60000)
@@ -59,6 +62,7 @@ export class OrganisationsController {
     return this.organisationsService.findOne(id, userId);
   }
 
+  @ApiOperation({ operationId: 'OrganisationUpdate' })
   @Patch(':id')
   @Roles(Role.Admin)
   update(
@@ -69,6 +73,7 @@ export class OrganisationsController {
     return this.organisationsService.update(id, updateOrganisationDto, userId);
   }
 
+  @ApiOperation({ operationId: 'OrganisationDelete' })
   @Delete(':id')
   @Roles(Role.Admin)
   remove(

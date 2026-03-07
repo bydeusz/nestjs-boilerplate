@@ -12,16 +12,12 @@ import {
   Query,
   UseInterceptors,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { PaginationQueryDto } from '../../common/dto';
 import { CurrentUser, Roles } from '../../common/decorators';
 import { Role } from '../../common/enums';
 import { PaginatedResult } from '../../common/interfaces';
-import {
-  CreateUserDto,
-  UpdateUserDto,
-  UserResponseDto,
-} from './dto';
+import { CreateUserDto, UpdateUserDto, UserResponseDto } from './dto';
 import { UsersService } from './users.service';
 
 @Controller('users')
@@ -32,11 +28,13 @@ import { UsersService } from './users.service';
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
+  @ApiOperation({ operationId: 'UserCreate' })
   @Post()
   create(@Body() createUserDto: CreateUserDto): Promise<UserResponseDto> {
     return this.usersService.create(createUserDto);
   }
 
+  @ApiOperation({ operationId: 'UserGetList' })
   @Get()
   @Roles(Role.Admin, Role.User)
   @CacheTTL(30000)
@@ -46,6 +44,7 @@ export class UsersController {
     return this.usersService.findAll(query);
   }
 
+  @ApiOperation({ operationId: 'UserGet' })
   @Get(':id')
   @Roles(Role.Admin, Role.User)
   @CacheTTL(60000)
@@ -63,6 +62,7 @@ export class UsersController {
     return this.usersService.findOne(id);
   }
 
+  @ApiOperation({ operationId: 'UserUpdate' })
   @Patch(':id')
   @Roles(Role.Admin, Role.User)
   update(
@@ -100,6 +100,7 @@ export class UsersController {
     return this.usersService.update(id, updateUserDto);
   }
 
+  @ApiOperation({ operationId: 'UserDelete' })
   @Delete(':id')
   @Roles(Role.Admin, Role.User)
   remove(

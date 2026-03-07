@@ -15,7 +15,13 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { ApiBearerAuth, ApiBody, ApiConsumes, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiBody,
+  ApiConsumes,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
 import type { Express } from 'express';
 import { CurrentUser } from '../../common/decorators';
 import { FileScope } from '../../generated/prisma/client';
@@ -38,6 +44,7 @@ export class FilesController {
     private readonly prisma: PrismaService,
   ) {}
 
+  @ApiOperation({ operationId: 'FileUpload' })
   @Post(':scope/:ownerId/:folder')
   @UseInterceptors(FileInterceptor('file'))
   @ApiConsumes('multipart/form-data')
@@ -79,6 +86,7 @@ export class FilesController {
     );
   }
 
+  @ApiOperation({ operationId: 'FileReplace' })
   @Put(':scope/:ownerId/:folder')
   @UseInterceptors(FileInterceptor('file'))
   @ApiConsumes('multipart/form-data')
@@ -119,6 +127,7 @@ export class FilesController {
     );
   }
 
+  @ApiOperation({ operationId: 'FileGetList' })
   @Get()
   findAll(
     @CurrentUser('isAdmin') isAdmin: boolean,
@@ -128,6 +137,7 @@ export class FilesController {
     return this.filesService.findAllForUser(query);
   }
 
+  @ApiOperation({ operationId: 'FileGet' })
   @Get(':id')
   findOne(
     @Param('id', ParseUUIDPipe) id: string,
@@ -137,6 +147,7 @@ export class FilesController {
     return this.filesService.findOne(id);
   }
 
+  @ApiOperation({ operationId: 'FileDelete' })
   @Delete(':id')
   remove(
     @Param('id', ParseUUIDPipe) id: string,

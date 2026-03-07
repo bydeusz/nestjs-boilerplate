@@ -5,7 +5,7 @@ import {
   MemoryHealthIndicator,
   PrismaHealthIndicator,
 } from '@nestjs/terminus';
-import { ApiTags } from '@nestjs/swagger';
+import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Public, SkipTransform } from '../../common/decorators';
 import { PrismaService } from '../../prisma/prisma.service';
 import { RedisHealthIndicator } from './indicators/redis.health';
@@ -21,6 +21,7 @@ export class HealthController {
     private readonly redisHealth: RedisHealthIndicator,
   ) {}
 
+  @ApiOperation({ operationId: 'HealthCheck' })
   @Get()
   @Public()
   @SkipTransform()

@@ -11,6 +11,18 @@ describe('AuthController', () => {
       message:
         'If an account exists for this email, a new password has been sent.',
     }),
+    getCurrentUser: jest.fn().mockResolvedValue({
+      id: 'user-1',
+      name: 'John',
+      surname: 'Doe',
+      email: 'john@example.com',
+      isAdmin: false,
+      isActive: true,
+      organisationIds: ['org-1'],
+      avatarUrl: null,
+      createdAt: new Date('2025-01-01T00:00:00.000Z'),
+      updatedAt: new Date('2025-01-01T00:00:00.000Z'),
+    }),
   };
   const configService = {
     get: jest.fn(),
@@ -35,6 +47,18 @@ describe('AuthController', () => {
     expect(result).toEqual({
       message:
         'If an account exists for this email, a new password has been sent.',
+    });
+  });
+
+  it('returns current authenticated user data', async () => {
+    const result = await controller.me('user-1');
+
+    expect(authService.getCurrentUser).toHaveBeenCalledWith('user-1');
+    expect(result).toMatchObject({
+      id: 'user-1',
+      email: 'john@example.com',
+      isAdmin: false,
+      isActive: true,
     });
   });
 });
