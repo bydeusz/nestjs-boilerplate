@@ -339,6 +339,8 @@ export class AuthService {
     name: string,
     code: string,
   ): Promise<void> {
+    const activationUrl = this.buildActivationUrl(email, code);
+
     await this.queueService.addMailJob(MAIL_JOB_SEND, {
       to: email,
       subject: 'Activate your account',
@@ -346,8 +348,19 @@ export class AuthService {
       context: {
         name,
         code,
+        activationUrl,
       },
     });
+  }
+
+  private buildActivationUrl(email: string, _code: string): string {
+    const frontendUrl = this.configService.get<string>(
+      'auth.frontendUrl',
+      'http://localhost:3000',
+    );
+    const url = new URL('/verify', frontendUrl);
+    url.searchParams.set('email', email);
+    return url.toString();
   }
 
   private async sendWelcomeEmail(email: string, name: string): Promise<void> {

@@ -8,7 +8,12 @@ jest.mock('../../prisma/prisma.service', () => ({
 
 describe('AuthService', () => {
   const configService = {
-    get: jest.fn(),
+    get: jest.fn((key: string, defaultValue?: unknown) => {
+      if (key === 'auth.allowedEmailDomains') {
+        return ['example.com'];
+      }
+      return defaultValue;
+    }),
     getOrThrow: jest.fn((key: string) => {
       if (key === 'jwt.refreshExpiration') {
         return '7d';
@@ -148,6 +153,39 @@ describe('AuthService', () => {
       'user-1',
       expect.any(String),
       false,
+    );
+  });
+
+  it('sends activation mail with email-only verify URL on register', async () => {
+    usersService.findByEmail.mockResolvedValue(null);
+    usersService.createFromRegistration.mockResolvedValue({
+      id: 'user-1',
+      email: 'john@example.com',
+      name: 'John',
+      surname: 'Doe',
+    });
+    prisma.activationCode.deleteMany.mockResolvedValue({ count: 0 });
+    prisma.activationCode.create.mockResolvedValue({
+      code: '123456',
+      expiresAt: new Date(Date.now() + 60_000),
+    });
+
+    await service.register({
+      email: 'john@example.com',
+      name: 'John',
+      surname: 'Doe',
+      password: 'Secret123!',
+    });
+
+    expect(queueService.addMailJob).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({
+        template: 'activation-code',
+        context: expect.objectContaining({
+          code: '123456',
+          activationUrl: 'http://localhost:3000/verify?email=john%40example.com',
+        }),
+      }),
     );
   });
 });

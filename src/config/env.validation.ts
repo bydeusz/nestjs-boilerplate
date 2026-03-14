@@ -149,6 +149,10 @@ class EnvironmentVariables {
   @IsBoolean()
   @IsOptional()
   REGISTRATION_ENABLED: boolean = false;
+
+  @IsString()
+  @IsOptional()
+  FRONTEND_URL: string = 'http://localhost:3000';
 }
 
 export function validate(config: Record<string, unknown>) {

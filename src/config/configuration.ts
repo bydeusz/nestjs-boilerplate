@@ -51,6 +51,7 @@ export default () => ({
       .map((domain) => domain.trim().toLowerCase())
       .filter(Boolean),
     registrationEnabled: process.env.REGISTRATION_ENABLED === 'true',
+    frontendUrl: process.env.FRONTEND_URL ?? 'http://localhost:3000',
   },
   mail: {
     host: process.env.SMTP_HOST ?? 'localhost',
