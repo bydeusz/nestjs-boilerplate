@@ -27,7 +27,7 @@ export class MailProcessor extends WorkerHost {
   ): Promise<void> {
     this.logger.log(`Processing mail job ${job.id}`);
 
-    const { to, subject, template, context } =
+    const { to, subject, template, context, attachments } =
       job.data as Partial<SendMailOptions>;
 
     if (
@@ -43,6 +43,7 @@ export class MailProcessor extends WorkerHost {
       subject,
       template,
       context,
+      attachments,
     });
   }
 

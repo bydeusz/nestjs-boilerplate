@@ -8,8 +8,11 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Handlebars from 'handlebars';
-import nodemailer, { type Transporter } from 'nodemailer';
-import type { SendMailOptions } from './interfaces/send-mail-options.interface';
+import nodemailer, { type SendMailOptions as NodemailerSendMailOptions, type Transporter } from 'nodemailer';
+import type {
+  MailAttachment,
+  SendMailOptions,
+} from './interfaces/send-mail-options.interface';
 
 interface SendRawMailOptions {
   to: string | string[];
@@ -79,6 +82,7 @@ export class MailService implements OnModuleInit, OnModuleDestroy {
       to: options.to,
       subject: options.subject,
       html,
+      attachments: this.mapAttachments(options.attachments),
     });
   }
 
@@ -101,6 +105,20 @@ export class MailService implements OnModuleInit, OnModuleDestroy {
     const template = Handlebars.compile(templateFile);
 
     return template(context);
+  }
+
+  private mapAttachments(
+    attachments: MailAttachment[] | undefined,
+  ): NodemailerSendMailOptions['attachments'] {
+    if (!attachments?.length) {
+      return undefined;
+    }
+
+    return attachments.map((attachment) => ({
+      filename: attachment.filename,
+      content: Buffer.from(attachment.content, 'base64'),
+      contentType: attachment.contentType,
+    }));
   }
 
   private toBoolean(value: unknown): boolean {

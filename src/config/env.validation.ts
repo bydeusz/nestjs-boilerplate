@@ -1,6 +1,7 @@
 import { plainToInstance } from 'class-transformer';
 import {
   IsBoolean,
+  IsEmail,
   IsEnum,
   IsNotEmpty,
   IsNumber,
@@ -78,6 +79,10 @@ class EnvironmentVariables {
   @IsString()
   @IsOptional()
   MAIL_FROM: string = 'noreply@example.com';
+
+  @IsEmail()
+  @IsOptional()
+  SUPPORT_EMAIL: string = 'support@example.com';
 
   @IsString()
   @IsOptional()

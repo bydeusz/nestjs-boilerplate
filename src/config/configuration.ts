@@ -60,6 +60,7 @@ export default () => ({
     user: process.env.SMTP_USER ?? '',
     password: process.env.SMTP_PASSWORD ?? '',
     from: process.env.MAIL_FROM ?? 'noreply@example.com',
+    supportEmail: process.env.SUPPORT_EMAIL ?? 'support@example.com',
   },
   storage: {
     endpoint: process.env.S3_ENDPOINT ?? 'http://localhost:9000',
