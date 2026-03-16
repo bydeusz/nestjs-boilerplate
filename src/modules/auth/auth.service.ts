@@ -90,9 +90,7 @@ export class AuthService {
     }
 
     if (user.mustChangePassword) {
-      throw new ForbiddenException(
-        'A password reset was requested for this account. Please change your password first.',
-      );
+      throw new ForbiddenException('PasswordResetRequired');
     }
 
     return this.generateTokens(user);
@@ -275,16 +273,64 @@ export class AuthService {
 
     const temporaryPassword = generatePassword(16);
     const hashedPassword = await hashPassword(temporaryPassword);
+    const temporaryPasswordExpiresAt = this.buildTemporaryPasswordExpiryDate();
+    const resetUrl = this.buildResetPasswordUrl(user.email);
 
-    await this.usersService.updatePassword(user.id, hashedPassword, true);
+    await this.usersService.updatePassword(
+      user.id,
+      hashedPassword,
+      true,
+      temporaryPasswordExpiresAt,
+    );
     await this.revokeAllUserTokens(user.id);
     await this.sendResetPasswordEmail(
       user.email,
       `${user.name} ${user.surname}`.trim(),
       temporaryPassword,
+      resetUrl,
     );
 
     return message;
+  }
+
+  async resetPassword(
+    email: string,
+    temporaryPassword: string,
+    newPassword: string,
+  ): Promise<MessageResponseDto> {
+    const user = await this.usersService.findByEmail(email);
+    if (!user || !user.mustChangePassword) {
+      throw new BadRequestException('Invalid temporary password.');
+    }
+
+    if (
+      !user.temporaryPasswordExpiresAt ||
+      user.temporaryPasswordExpiresAt <= new Date()
+    ) {
+      throw new BadRequestException('Temporary password has expired.');
+    }
+
+    const isTemporaryPasswordValid = await comparePassword(
+      temporaryPassword,
+      user.password,
+    );
+    if (!isTemporaryPasswordValid) {
+      throw new BadRequestException('Invalid temporary password.');
+    }
+
+    const hashedPassword = await hashPassword(newPassword);
+    await this.usersService.updatePassword(user.id, hashedPassword, false, null);
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: { isActive: true },
+    });
+    await this.revokeAllUserTokens(user.id);
+    await this.sendPasswordChangedEmail(
+      user.email,
+      `${user.name} ${user.surname}`.trim(),
+    );
+
+    return { message: 'Password has been reset successfully.' };
   }
 
   getCurrentUser(userId: string): Promise<UserResponseDto> {
@@ -318,6 +364,10 @@ export class AuthService {
 
   private buildActivationCodeExpiryDate(): Date {
     return new Date(Date.now() + 24 * 60 * 60 * 1000);
+  }
+
+  private buildTemporaryPasswordExpiryDate(): Date {
+    return new Date(Date.now() + 30 * 60 * 1000);
   }
 
   private generateActivationCode(): string {
@@ -363,6 +413,16 @@ export class AuthService {
     return url.toString();
   }
 
+  private buildResetPasswordUrl(email: string): string {
+    const frontendUrl = this.configService.get<string>(
+      'auth.frontendUrl',
+      'http://localhost:3000',
+    );
+    const url = new URL('/reset-password/confirm', frontendUrl);
+    url.searchParams.set('email', email);
+    return url.toString();
+  }
+
   private async sendWelcomeEmail(email: string, name: string): Promise<void> {
     await this.queueService.addMailJob(MAIL_JOB_SEND, {
       to: email,
@@ -392,6 +452,7 @@ export class AuthService {
     email: string,
     name: string,
     temporaryPassword: string,
+    resetUrl: string,
   ): Promise<void> {
     await this.queueService.addMailJob(MAIL_JOB_SEND, {
       to: email,
@@ -400,6 +461,7 @@ export class AuthService {
       context: {
         name,
         temporaryPassword,
+        resetUrl,
       },
     });
   }

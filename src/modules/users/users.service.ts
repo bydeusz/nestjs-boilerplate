@@ -172,12 +172,14 @@ export class UsersService {
     userId: string,
     hashedPassword: string,
     mustChangePassword = false,
+    temporaryPasswordExpiresAt: Date | null = null,
   ): Promise<void> {
     await this.prisma.user.update({
       where: { id: userId },
       data: {
         password: hashedPassword,
         mustChangePassword,
+        temporaryPasswordExpiresAt,
       },
     });
 

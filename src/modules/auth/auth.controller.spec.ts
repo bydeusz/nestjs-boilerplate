@@ -11,6 +11,9 @@ describe('AuthController', () => {
       message:
         'If an account exists for this email, a new password has been sent.',
     }),
+    resetPassword: jest.fn().mockResolvedValue({
+      message: 'Password has been reset successfully.',
+    }),
     getCurrentUser: jest.fn().mockResolvedValue({
       id: 'user-1',
       name: 'John',
@@ -59,6 +62,23 @@ describe('AuthController', () => {
       email: 'john@example.com',
       isAdmin: false,
       isActive: true,
+    });
+  });
+
+  it('delegates reset-password call to auth service', async () => {
+    const result = await controller.resetPassword({
+      email: 'john@example.com',
+      temporaryPassword: 'TempSecret123!',
+      newPassword: 'NewSecret123!',
+    });
+
+    expect(authService.resetPassword).toHaveBeenCalledWith(
+      'john@example.com',
+      'TempSecret123!',
+      'NewSecret123!',
+    );
+    expect(result).toEqual({
+      message: 'Password has been reset successfully.',
     });
   });
 });

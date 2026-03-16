@@ -1,4 +1,4 @@
-import { ForbiddenException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import { comparePassword, hashPassword } from '../../common/utils';
 import { AuthService } from './auth.service';
 
@@ -82,7 +82,7 @@ describe('AuthService', () => {
     expect(queueService.addMailJob).not.toHaveBeenCalled();
   });
 
-  it('stores a hashed temporary password and marks force-change', async () => {
+  it('stores a hashed temporary password, adds expiration and reset URL', async () => {
     usersService.findByEmail.mockResolvedValue({
       id: 'user-1',
       email: 'john@example.com',
@@ -97,13 +97,14 @@ describe('AuthService', () => {
       'user-1',
       expect.any(String),
       true,
+      expect.any(Date),
     );
     expect(queueService.addMailJob).toHaveBeenCalledTimes(1);
 
     const updatePasswordCalls = usersService.updatePassword.mock
       .calls as Array<[string, string, boolean]>;
     const addMailJobCalls = queueService.addMailJob.mock.calls as Array<
-      [string, { context: { temporaryPassword: string } }]
+      [string, { context: { temporaryPassword: string; resetUrl: string } }]
     >;
     const passwordHash = updatePasswordCalls[0][1];
     const temporaryPassword =
@@ -113,6 +114,9 @@ describe('AuthService', () => {
     await expect(
       comparePassword(temporaryPassword, passwordHash),
     ).resolves.toBe(true);
+    expect(addMailJobCalls[0][1].context.resetUrl).toBe(
+      'http://localhost:3000/reset-password/confirm?email=john%40example.com',
+    );
   });
 
   it('blocks login when mustChangePassword is true', async () => {
@@ -187,5 +191,78 @@ describe('AuthService', () => {
         }),
       }),
     );
+  });
+
+  it('resets password with a valid temporary password', async () => {
+    const hashedTemporaryPassword = await hashPassword('TempSecret123!');
+    usersService.findByEmail.mockResolvedValue({
+      id: 'user-1',
+      email: 'john@example.com',
+      name: 'John',
+      surname: 'Doe',
+      isActive: false,
+      mustChangePassword: true,
+      temporaryPasswordExpiresAt: new Date(Date.now() + 5 * 60 * 1000),
+      password: hashedTemporaryPassword,
+    });
+    usersService.updatePassword.mockResolvedValue(undefined);
+    prisma.user.update.mockResolvedValue(undefined);
+
+    await expect(
+      service.resetPassword(
+        'john@example.com',
+        'TempSecret123!',
+        'NewSecret123!',
+      ),
+    ).resolves.toEqual({ message: 'Password has been reset successfully.' });
+
+    expect(usersService.updatePassword).toHaveBeenCalledWith(
+      'user-1',
+      expect.any(String),
+      false,
+      null,
+    );
+    expect(prisma.user.update).toHaveBeenCalledWith({
+      where: { id: 'user-1' },
+      data: { isActive: true },
+    });
+  });
+
+  it('rejects reset when temporary password has expired', async () => {
+    const hashedTemporaryPassword = await hashPassword('TempSecret123!');
+    usersService.findByEmail.mockResolvedValue({
+      id: 'user-1',
+      email: 'john@example.com',
+      name: 'John',
+      surname: 'Doe',
+      mustChangePassword: true,
+      temporaryPasswordExpiresAt: new Date(Date.now() - 1),
+      password: hashedTemporaryPassword,
+    });
+
+    await expect(
+      service.resetPassword(
+        'john@example.com',
+        'TempSecret123!',
+        'NewSecret123!',
+      ),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('rejects reset when temporary password is invalid', async () => {
+    const hashedTemporaryPassword = await hashPassword('TempSecret123!');
+    usersService.findByEmail.mockResolvedValue({
+      id: 'user-1',
+      email: 'john@example.com',
+      name: 'John',
+      surname: 'Doe',
+      mustChangePassword: true,
+      temporaryPasswordExpiresAt: new Date(Date.now() + 5 * 60 * 1000),
+      password: hashedTemporaryPassword,
+    });
+
+    await expect(
+      service.resetPassword('john@example.com', 'WrongTemp123!', 'NewSecret123!'),
+    ).rejects.toBeInstanceOf(BadRequestException);
   });
 });

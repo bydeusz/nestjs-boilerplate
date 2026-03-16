@@ -18,6 +18,7 @@ import {
   LoginDto,
   MessageResponseDto,
   RefreshTokenDto,
+  ResetPasswordDto,
   RegisterDto,
   RequestNewPasswordDto,
   ResendActivationDto,
@@ -88,6 +89,21 @@ export class AuthController {
     @Body() requestNewPasswordDto: RequestNewPasswordDto,
   ): Promise<MessageResponseDto> {
     return this.authService.requestNewPassword(requestNewPasswordDto.email);
+  }
+
+  @Public()
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  @ApiOperation({ operationId: 'AuthResetPassword' })
+  @Post('reset-password')
+  @HttpCode(HttpStatus.OK)
+  resetPassword(
+    @Body() resetPasswordDto: ResetPasswordDto,
+  ): Promise<MessageResponseDto> {
+    return this.authService.resetPassword(
+      resetPasswordDto.email,
+      resetPasswordDto.temporaryPassword,
+      resetPasswordDto.newPassword,
+    );
   }
 
   @Public()
