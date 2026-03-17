@@ -6,56 +6,77 @@ export async function seedUsers(
   prisma: PrismaClient,
   organisationIds: SeededOrganisationIds,
 ): Promise<void> {
-  const PasswordHash = await hashPassword('Admin123!');
+  const passwordHash = await hashPassword('Admin123!');
   const bydeuszOrganisationId = organisationIds.bydeusz;
 
-  await prisma.user.upsert({
-    where: { email: 'john.doe@bydeusz.com' },
-    update: {
-      name: 'john',
-      surname: 'doe',
-      password: PasswordHash,
-      isAdmin: true,
-      isActive: true,
-      organisations: {
-        set: [{ id: bydeuszOrganisationId }],
-      },
-    },
-    create: {
+  const users: Array<{
+    name: string;
+    surname: string;
+    email: string;
+    isAdmin: boolean;
+  }> = [
+    {
       name: 'John',
       surname: 'Doe',
       email: 'john.doe@bydeusz.com',
-      password: PasswordHash,
       isAdmin: true,
-      isActive: true,
-      organisations: {
-        connect: [{ id: bydeuszOrganisationId }],
-      },
     },
-  });
-
-  await prisma.user.upsert({
-    where: { email: 'john.smith@bydeusz.com' },
-    update: {
-      name: 'John',
-      surname: 'Smith',
-      password: PasswordHash,
-      isAdmin: false,
-      isActive: true,
-      organisations: {
-        set: [{ id: bydeuszOrganisationId }],
-      },
+    {
+      name: 'Jane',
+      surname: 'Admin',
+      email: 'jane.admin@bydeusz.com',
+      isAdmin: true,
     },
-    create: {
+    {
       name: 'John',
       surname: 'Smith',
       email: 'john.smith@bydeusz.com',
-      password: PasswordHash,
       isAdmin: false,
-      isActive: true,
-      organisations: {
-        connect: [{ id: bydeuszOrganisationId }],
-      },
     },
-  });
+    {
+      name: 'Anna',
+      surname: 'Jansen',
+      email: 'anna.jansen@bydeusz.com',
+      isAdmin: false,
+    },
+    {
+      name: 'Tom',
+      surname: 'Bakker',
+      email: 'tom.bakker@bydeusz.com',
+      isAdmin: false,
+    },
+    {
+      name: 'Lisa',
+      surname: 'Visser',
+      email: 'lisa.visser@bydeusz.com',
+      isAdmin: false,
+    },
+  ];
+
+  for (const user of users) {
+    await prisma.user.upsert({
+      where: { email: user.email },
+      update: {
+        name: user.name,
+        surname: user.surname,
+        password: passwordHash,
+        isAdmin: user.isAdmin,
+        isActive: true,
+        organisations: {
+          set: [{ id: bydeuszOrganisationId }],
+        },
+      },
+      create: {
+        name: user.name,
+        surname: user.surname,
+        email: user.email,
+        password: passwordHash,
+        isAdmin: user.isAdmin,
+        isActive: true,
+        organisations: {
+          connect: [{ id: bydeuszOrganisationId }],
+        },
+      },
+    });
+  }
 }

@@ -16,7 +16,7 @@ const organisations: Array<{
 }> = [
   {
     id: '95ea1d7c-9552-4ea8-9d17-bf305f1246b6',
-    name: 'Bydeusz B.V.',
+    name: 'byDeusz',
     address: 'Keizersgracht 101',
     postalCode: '1015CJ',
     city: 'Amsterdam',
