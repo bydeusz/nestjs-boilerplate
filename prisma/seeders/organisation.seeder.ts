@@ -2,6 +2,7 @@ import { PrismaClient } from '../../src/generated/prisma/client';
 
 export interface SeededOrganisationIds {
   bydeusz: string;
+  nike: string;
 }
 
 const organisations: Array<{
@@ -19,6 +20,16 @@ const organisations: Array<{
     name: 'byDeusz',
     address: 'Keizersgracht 101',
     postalCode: '1015CJ',
+    city: 'Amsterdam',
+    kvk: '12345678',
+    vatNumber: 'NL123456789B01',
+    iban: 'NL91ABNA0417164300',
+  },
+  {
+    id: '95ea1d7c-9552-4ea8-9d17-bf305f1246b7',
+    name: 'NIKE BV',
+    address: 'Zuiderpark 1',
+    postalCode: '2011 EJ',
     city: 'Amsterdam',
     kvk: '12345678',
     vatNumber: 'NL123456789B01',
@@ -43,5 +54,6 @@ export async function seedOrganisations(
 
   return {
     bydeusz: organisations[0].id,
+    nike: organisations[1].id,
   };
 }

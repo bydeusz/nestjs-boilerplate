@@ -7,7 +7,11 @@ export async function seedUsers(
   organisationIds: SeededOrganisationIds,
 ): Promise<void> {
   const passwordHash = await hashPassword('Admin123!');
-  const bydeuszOrganisationId = organisationIds.bydeusz;
+  const defaultOrganisationIds = [organisationIds.bydeusz];
+  const johnDoeOrganisationIds = [
+    organisationIds.bydeusz,
+    organisationIds.nike,
+  ];
 
   const users: Array<{
     name: string;
@@ -54,6 +58,11 @@ export async function seedUsers(
   ];
 
   for (const user of users) {
+    const organisationIdsForUser =
+      user.email === 'john.doe@bydeusz.com'
+        ? johnDoeOrganisationIds
+        : defaultOrganisationIds;
+
     await prisma.user.upsert({
       where: { email: user.email },
       update: {
@@ -63,7 +72,7 @@ export async function seedUsers(
         isAdmin: user.isAdmin,
         isActive: true,
         organisations: {
-          set: [{ id: bydeuszOrganisationId }],
+          set: organisationIdsForUser.map((id) => ({ id })),
         },
       },
       create: {
@@ -74,7 +83,7 @@ export async function seedUsers(
         isAdmin: user.isAdmin,
         isActive: true,
         organisations: {
-          connect: [{ id: bydeuszOrganisationId }],
+          connect: organisationIdsForUser.map((id) => ({ id })),
         },
       },
     });
