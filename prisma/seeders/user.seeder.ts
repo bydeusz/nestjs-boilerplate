@@ -27,40 +27,7 @@ export async function seedUsers(
       surname: 'Doe',
       email: 'john.doe@bydeusz.com',
       organisations: [
-        { organisationId: organisationIds.bydeusz, role: OrganisationRole.OWNER },
         { organisationId: organisationIds.nike, role: OrganisationRole.MEMBER },
-      ],
-    },
-    {
-      name: 'Jane',
-      surname: 'Admin',
-      email: 'jane.admin@bydeusz.com',
-      organisations: [
-        { organisationId: organisationIds.bydeusz, role: OrganisationRole.OWNER },
-      ],
-    },
-    {
-      name: 'John',
-      surname: 'Smith',
-      email: 'john.smith@bydeusz.com',
-      organisations: [
-        { organisationId: organisationIds.bydeusz, role: OrganisationRole.MEMBER },
-      ],
-    },
-    {
-      name: 'Anna',
-      surname: 'Jansen',
-      email: 'anna.jansen@bydeusz.com',
-      organisations: [
-        { organisationId: organisationIds.bydeusz, role: OrganisationRole.MEMBER },
-      ],
-    },
-    {
-      name: 'Tom',
-      surname: 'Bakker',
-      email: 'tom.bakker@bydeusz.com',
-      organisations: [
-        { organisationId: organisationIds.bydeusz, role: OrganisationRole.MEMBER },
       ],
     },
     {
