@@ -15,11 +15,13 @@ import {
   ActivateDto,
   AuthTokensResponseDto,
   ChangePasswordDto,
+  ConfirmEmailChangeDto,
   LoginDto,
   MessageResponseDto,
   RefreshTokenDto,
   ResetPasswordDto,
   RegisterDto,
+  RequestEmailChangeDto,
   RequestNewPasswordDto,
   ResendActivationDto,
 } from './dto';
@@ -145,5 +147,27 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   me(@CurrentUser('sub') userId: string): Promise<UserResponseDto> {
     return this.authService.getCurrentUser(userId);
+  }
+
+  @Throttle({ default: { limit: 3, ttl: 60000 } })
+  @ApiOperation({ operationId: 'AuthRequestEmailChange' })
+  @Post('request-email-change')
+  @HttpCode(HttpStatus.OK)
+  requestEmailChange(
+    @CurrentUser('sub') userId: string,
+    @Body() dto: RequestEmailChangeDto,
+  ): Promise<MessageResponseDto> {
+    return this.authService.requestEmailChange(userId, dto.newEmail);
+  }
+
+  @Public()
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  @ApiOperation({ operationId: 'AuthConfirmEmailChange' })
+  @Post('confirm-email-change')
+  @HttpCode(HttpStatus.OK)
+  confirmEmailChange(
+    @Body() dto: ConfirmEmailChangeDto,
+  ): Promise<MessageResponseDto> {
+    return this.authService.confirmEmailChange(dto.token);
   }
 }

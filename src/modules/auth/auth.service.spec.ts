@@ -1,4 +1,8 @@
-import { BadRequestException, ForbiddenException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { comparePassword, hashPassword } from '../../common/utils';
 import { AuthService } from './auth.service';
 
@@ -39,6 +43,12 @@ describe('AuthService', () => {
       deleteMany: jest.fn(),
       findFirst: jest.fn(),
       create: jest.fn(),
+    },
+    emailChangeRequest: {
+      deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
+      create: jest.fn(),
+      findUnique: jest.fn(),
+      delete: jest.fn(),
     },
     user: {
       update: jest.fn(),
@@ -264,5 +274,128 @@ describe('AuthService', () => {
     await expect(
       service.resetPassword('john@example.com', 'WrongTemp123!', 'NewSecret123!'),
     ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  describe('requestEmailChange', () => {
+    const currentUser = {
+      id: 'user-1',
+      email: 'john@example.com',
+      name: 'John',
+      surname: 'Doe',
+    };
+
+    it('rejects when new email matches the current one', async () => {
+      usersService.findById.mockResolvedValue(currentUser);
+
+      await expect(
+        service.requestEmailChange('user-1', 'john@example.com'),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(prisma.emailChangeRequest.create).not.toHaveBeenCalled();
+    });
+
+    it('rejects when new email domain is not allowed', async () => {
+      usersService.findById.mockResolvedValue(currentUser);
+
+      await expect(
+        service.requestEmailChange('user-1', 'jane@notallowed.com'),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(prisma.emailChangeRequest.create).not.toHaveBeenCalled();
+    });
+
+    it('rejects when new email is already taken', async () => {
+      usersService.findById.mockResolvedValue(currentUser);
+      usersService.findByEmail.mockResolvedValue({ id: 'user-2' });
+
+      await expect(
+        service.requestEmailChange('user-1', 'taken@example.com'),
+      ).rejects.toBeInstanceOf(ConflictException);
+      expect(prisma.emailChangeRequest.create).not.toHaveBeenCalled();
+    });
+
+    it('creates a request and sends mail to both old and new address', async () => {
+      usersService.findById.mockResolvedValue(currentUser);
+      usersService.findByEmail.mockResolvedValue(null);
+      prisma.emailChangeRequest.create.mockResolvedValue({});
+
+      await service.requestEmailChange('user-1', 'New@Example.com');
+
+      expect(prisma.emailChangeRequest.deleteMany).toHaveBeenCalledWith({
+        where: { userId: 'user-1' },
+      });
+      expect(prisma.emailChangeRequest.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            userId: 'user-1',
+            newEmail: 'new@example.com',
+            token: expect.any(String),
+            expiresAt: expect.any(Date),
+          }),
+        }),
+      );
+
+      const recipients = (queueService.addMailJob.mock.calls as Array<
+        [string, { to: string; template: string }]
+      >).map(([, payload]) => ({
+        to: payload.to,
+        template: payload.template,
+      }));
+
+      expect(recipients).toEqual(
+        expect.arrayContaining([
+          { to: 'new@example.com', template: 'email-change-confirmation' },
+          { to: 'john@example.com', template: 'email-change-notice' },
+        ]),
+      );
+    });
+  });
+
+  describe('confirmEmailChange', () => {
+    it('rejects an unknown token', async () => {
+      prisma.emailChangeRequest.findUnique.mockResolvedValue(null);
+
+      await expect(service.confirmEmailChange('bad')).rejects.toBeInstanceOf(
+        BadRequestException,
+      );
+    });
+
+    it('rejects an expired token and deletes the request', async () => {
+      prisma.emailChangeRequest.findUnique.mockResolvedValue({
+        id: 'req-1',
+        token: 'tok',
+        userId: 'user-1',
+        newEmail: 'new@example.com',
+        expiresAt: new Date(Date.now() - 1),
+        user: { id: 'user-1', email: 'old@example.com' },
+      });
+
+      await expect(service.confirmEmailChange('tok')).rejects.toBeInstanceOf(
+        BadRequestException,
+      );
+      expect(prisma.emailChangeRequest.delete).toHaveBeenCalledWith({
+        where: { id: 'req-1' },
+      });
+    });
+
+    it('updates the email and revokes tokens on success', async () => {
+      prisma.emailChangeRequest.findUnique.mockResolvedValue({
+        id: 'req-1',
+        token: 'tok',
+        userId: 'user-1',
+        newEmail: 'new@example.com',
+        expiresAt: new Date(Date.now() + 60_000),
+        user: { id: 'user-1', email: 'old@example.com' },
+      });
+      usersService.findByEmail.mockResolvedValue(null);
+      prisma.$transaction.mockResolvedValue([]);
+
+      await expect(service.confirmEmailChange('tok')).resolves.toEqual({
+        message: 'Email address has been updated. Please sign in again.',
+      });
+
+      expect(prisma.refreshToken.updateMany).toHaveBeenCalledWith({
+        where: { userId: 'user-1', revokedAt: null },
+        data: { revokedAt: expect.any(Date) },
+      });
+    });
   });
 });
