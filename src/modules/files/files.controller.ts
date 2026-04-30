@@ -34,6 +34,12 @@ import {
   UploadFileQueryDto,
 } from './dto';
 import { FilesService } from './files.service';
+import {
+  ALLOWED_UPLOAD_MIME_TYPES,
+  MAX_UPLOAD_SIZE_BYTES,
+  detectMimeFromBuffer,
+  isAllowedUploadMimeType,
+} from './utils/file-validation.util';
 
 @Controller('files')
 @ApiTags('Files')
@@ -67,14 +73,14 @@ export class FilesController {
     @CurrentUser('isAdmin') isAdmin: boolean,
     @UploadedFile(
       new ParseFilePipe({
-        validators: [new MaxFileSizeValidator({ maxSize: 10 * 1024 * 1024 })],
+        validators: [new MaxFileSizeValidator({ maxSize: MAX_UPLOAD_SIZE_BYTES })],
       }),
     )
     file: Express.Multer.File,
   ): Promise<FileResponseDto> {
     const scope = this.resolveScope(params.scope);
     await this.assertUploadAccess(scope, params.ownerId, userId, isAdmin);
-    this.assertFolderSpecificFileRules(params.folder, file);
+    this.assertSafeUpload(file);
 
     return this.filesService.upload(
       scope,
@@ -108,14 +114,14 @@ export class FilesController {
     @CurrentUser('isAdmin') isAdmin: boolean,
     @UploadedFile(
       new ParseFilePipe({
-        validators: [new MaxFileSizeValidator({ maxSize: 10 * 1024 * 1024 })],
+        validators: [new MaxFileSizeValidator({ maxSize: MAX_UPLOAD_SIZE_BYTES })],
       }),
     )
     file: Express.Multer.File,
   ): Promise<FileResponseDto> {
     const scope = this.resolveScope(params.scope);
     await this.assertUploadAccess(scope, params.ownerId, userId, isAdmin);
-    this.assertFolderSpecificFileRules(params.folder, file);
+    this.assertSafeUpload(file);
 
     return this.filesService.upload(
       scope,
@@ -198,32 +204,28 @@ export class FilesController {
     }
   }
 
-  private assertFolderSpecificFileRules(
-    folder: string,
-    file: Express.Multer.File,
-  ): void {
-    if (folder === 'avatar') {
-      if (!/image\/(jpeg|png|webp)/.test(file.mimetype)) {
-        throw new BadRequestException(
-          'Avatar must be jpeg, png, or webp image.',
-        );
-      }
-
-      if (file.size > 5 * 1024 * 1024) {
-        throw new BadRequestException('Avatar file size cannot exceed 5MB.');
-      }
+  private assertSafeUpload(file: Express.Multer.File): void {
+    if (file.size > MAX_UPLOAD_SIZE_BYTES) {
+      throw new BadRequestException('File size cannot exceed 5MB.');
     }
 
-    if (folder === 'logo') {
-      if (!/image\/(jpeg|png|webp|svg\+xml)/.test(file.mimetype)) {
-        throw new BadRequestException(
-          'Logo must be jpeg, png, webp, or svg image.',
-        );
-      }
+    if (!isAllowedUploadMimeType(file.mimetype)) {
+      throw new BadRequestException(
+        `Unsupported file type. Allowed: ${ALLOWED_UPLOAD_MIME_TYPES.join(', ')}.`,
+      );
+    }
 
-      if (file.size > 5 * 1024 * 1024) {
-        throw new BadRequestException('Logo file size cannot exceed 5MB.');
-      }
+    const detectedMime = detectMimeFromBuffer(file.buffer);
+    if (!detectedMime) {
+      throw new BadRequestException(
+        'File contents do not match a supported image format.',
+      );
+    }
+
+    if (detectedMime !== file.mimetype) {
+      throw new BadRequestException(
+        'Declared content type does not match file contents.',
+      );
     }
   }
 }

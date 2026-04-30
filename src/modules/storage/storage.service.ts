@@ -72,6 +72,7 @@ export class StorageService implements OnModuleInit, OnModuleDestroy {
         Key: key,
         Body: file.buffer,
         ContentType: file.mimetype,
+        ContentDisposition: this.buildContentDisposition(cleanName),
       }),
     );
 
@@ -91,6 +92,9 @@ export class StorageService implements OnModuleInit, OnModuleDestroy {
         Key: key,
         Body: file.buffer,
         ContentType: file.mimetype,
+        ContentDisposition: this.buildContentDisposition(
+          this.sanitizeFilename(file.originalname),
+        ),
       }),
     );
 
@@ -112,7 +116,11 @@ export class StorageService implements OnModuleInit, OnModuleDestroy {
   async getSignedUrl(key: string, expiresIn = 900): Promise<string> {
     return getSignedUrl(
       this.s3Client,
-      new GetObjectCommand({ Bucket: this.bucket, Key: key }),
+      new GetObjectCommand({
+        Bucket: this.bucket,
+        Key: key,
+        ResponseContentDisposition: 'attachment',
+      }),
       { expiresIn },
     );
   }
@@ -153,5 +161,9 @@ export class StorageService implements OnModuleInit, OnModuleDestroy {
 
   private sanitizeFilename(filename: string): string {
     return filename.replace(/[^a-zA-Z0-9._-]/g, '_');
+  }
+
+  private buildContentDisposition(filename: string): string {
+    return `attachment; filename="${filename}"`;
   }
 }
