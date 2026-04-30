@@ -29,13 +29,11 @@ export class StorageService implements OnModuleInit, OnModuleDestroy {
       'http://localhost:9000',
     );
 
-    const accessKey = this.configService.get<string>(
+    const accessKey = this.configService.getOrThrow<string>(
       'storage.accessKey',
-      'minioadmin',
     );
-    const secretKey = this.configService.get<string>(
+    const secretKey = this.configService.getOrThrow<string>(
       'storage.secretKey',
-      'minioadmin',
     );
     this.bucket = this.configService.get<string>('storage.bucket', 'uploads');
 
