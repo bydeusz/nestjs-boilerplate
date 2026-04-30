@@ -1,10 +1,4 @@
-import {
-  IsArray,
-  IsBoolean,
-  IsOptional,
-  IsString,
-  IsUUID,
-} from 'class-validator';
+import { IsOptional, IsString } from 'class-validator';
 
 export class UpdateUserDto {
   @IsOptional()
@@ -14,13 +8,4 @@ export class UpdateUserDto {
   @IsOptional()
   @IsString()
   surname?: string;
-
-  @IsOptional()
-  @IsBoolean()
-  isAdmin?: boolean;
-
-  @IsOptional()
-  @IsArray()
-  @IsUUID('4', { each: true })
-  organisationIds?: string[];
 }

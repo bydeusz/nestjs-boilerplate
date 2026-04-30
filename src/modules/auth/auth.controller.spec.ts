@@ -19,7 +19,6 @@ describe('AuthController', () => {
       name: 'John',
       surname: 'Doe',
       email: 'john@example.com',
-      isAdmin: false,
       isActive: true,
       organisationIds: ['org-1'],
       avatarUrl: null,
@@ -60,7 +59,6 @@ describe('AuthController', () => {
     expect(result).toMatchObject({
       id: 'user-1',
       email: 'john@example.com',
-      isAdmin: false,
       isActive: true,
     });
   });

@@ -4,12 +4,11 @@ model User {
   surname            String
   email              String           @unique
   password           String
-  isAdmin            Boolean          @default(false)
   isActive           Boolean          @default(false)
   mustChangePassword Boolean          @default(false)
   temporaryPasswordExpiresAt DateTime?
   avatarUrl          String?
-  organisations      Organisation[]
+  memberships        OrganisationMember[]
   refreshTokens      RefreshToken[]
   activationCodes    ActivationCode[]
   emailChangeRequests EmailChangeRequest[]

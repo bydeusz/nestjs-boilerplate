@@ -1,17 +1,21 @@
-import { IsOptional, IsString } from 'class-validator';
+import { IsNotEmpty, IsOptional, IsString } from 'class-validator';
 
 export class CreateOrganisationDto {
   @IsString()
+  @IsNotEmpty()
   name!: string;
 
+  @IsOptional()
   @IsString()
-  address!: string;
+  address?: string;
 
+  @IsOptional()
   @IsString()
-  postalCode!: string;
+  postalCode?: string;
 
+  @IsOptional()
   @IsString()
-  city!: string;
+  city?: string;
 
   @IsOptional()
   @IsString()

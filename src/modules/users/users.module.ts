@@ -1,10 +1,10 @@
 import { Module } from '@nestjs/common';
-import { QueueModule } from '../queue';
+import { OrganisationsModule } from '../organisations/organisations.module';
 import { UsersController } from './users.controller';
 import { UsersService } from './users.service';
 
 @Module({
-  imports: [QueueModule.register('producer')],
+  imports: [OrganisationsModule],
   controllers: [UsersController],
   providers: [UsersService],
   exports: [UsersService],

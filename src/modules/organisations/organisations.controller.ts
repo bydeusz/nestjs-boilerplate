@@ -13,8 +13,7 @@ import {
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { PaginationQueryDto } from '../../common/dto';
-import { CurrentUser, Roles } from '../../common/decorators';
-import { Role } from '../../common/enums';
+import { CurrentUser } from '../../common/decorators';
 import { PaginatedResult } from '../../common/interfaces';
 import {
   CreateOrganisationDto,
@@ -32,7 +31,6 @@ export class OrganisationsController {
 
   @ApiOperation({ operationId: 'OrganisationCreate' })
   @Post()
-  @Roles(Role.Admin)
   create(
     @Body() createOrganisationDto: CreateOrganisationDto,
     @CurrentUser('sub') userId: string,
@@ -42,7 +40,6 @@ export class OrganisationsController {
 
   @ApiOperation({ operationId: 'OrganisationGetList' })
   @Get()
-  @Roles(Role.Admin, Role.User)
   @CacheTTL(30000)
   findAll(
     @Query() query: PaginationQueryDto,
@@ -53,7 +50,6 @@ export class OrganisationsController {
 
   @ApiOperation({ operationId: 'OrganisationGet' })
   @Get(':id')
-  @Roles(Role.Admin, Role.User)
   @CacheTTL(60000)
   findOne(
     @Param('id', ParseUUIDPipe) id: string,
@@ -64,7 +60,6 @@ export class OrganisationsController {
 
   @ApiOperation({ operationId: 'OrganisationUpdate' })
   @Patch(':id')
-  @Roles(Role.Admin)
   update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() updateOrganisationDto: UpdateOrganisationDto,
@@ -75,7 +70,6 @@ export class OrganisationsController {
 
   @ApiOperation({ operationId: 'OrganisationDelete' })
   @Delete(':id')
-  @Roles(Role.Admin)
   remove(
     @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser('sub') userId: string,
