@@ -4,9 +4,14 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import type { Express } from 'express';
-import { FileScope, Prisma } from '../../generated/prisma/client';
+import {
+  FileScope,
+  OrganisationRole,
+  Prisma,
+} from '../../generated/prisma/client';
 import { PaginatedResult } from '../../common/interfaces';
 import { buildPaginationMeta, buildPrismaSkipTake } from '../../common/utils';
+import { OrganisationAccessService } from '../organisations/organisation-access.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { StorageService } from '../storage';
 import { FileListQueryDto, FileResponseDto } from './dto';
@@ -16,6 +21,7 @@ export class FilesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly storageService: StorageService,
+    private readonly organisationAccess: OrganisationAccessService,
   ) {}
 
   async upload(
@@ -74,6 +80,7 @@ export class FilesService {
   }
 
   async findAllForUser(
+    currentUserId: string,
     query: FileListQueryDto,
   ): Promise<PaginatedResult<FileResponseDto>> {
     const { skip, take } = buildPrismaSkipTake(query);
@@ -82,6 +89,15 @@ export class FilesService {
       scope: query.scope,
       folder: query.folder,
       mimeType: query.mimeType,
+      OR: [
+        { userId: currentUserId, scope: FileScope.USER },
+        {
+          scope: FileScope.ORGANISATION,
+          organisation: {
+            members: { some: { userId: currentUserId } },
+          },
+        },
+      ],
     };
 
     const [items, total] = await this.prisma.$transaction([
@@ -104,7 +120,7 @@ export class FilesService {
     };
   }
 
-  async findOne(fileId: string): Promise<FileResponseDto> {
+  async findOne(fileId: string, currentUserId: string): Promise<FileResponseDto> {
     const file = await this.prisma.file.findUnique({
       where: { id: fileId },
     });
@@ -113,13 +129,14 @@ export class FilesService {
       throw new NotFoundException('File not found.');
     }
 
+    await this.assertReadAccess(file, currentUserId);
+
     return this.toResponseDto(file);
   }
 
   async deleteFile(
     fileId: string,
     userId: string,
-    isAdmin: boolean,
   ): Promise<FileResponseDto> {
     const file = await this.prisma.file.findUnique({
       where: { id: fileId },
@@ -129,9 +146,7 @@ export class FilesService {
       throw new NotFoundException('File not found.');
     }
 
-    if (!isAdmin && file.userId !== userId) {
-      throw new ForbiddenException('You can only delete your own files.');
-    }
+    await this.assertDeleteAccess(file, userId);
 
     await this.storageService.delete(file.key);
 
@@ -149,6 +164,63 @@ export class FilesService {
     });
 
     return this.toResponseDto(file);
+  }
+
+  private async assertReadAccess(
+    file: { scope: FileScope; userId: string; organisationId: string | null },
+    currentUserId: string,
+  ): Promise<void> {
+    if (file.scope === FileScope.USER) {
+      if (file.userId !== currentUserId) {
+        throw new ForbiddenException('You cannot access this file.');
+      }
+      return;
+    }
+
+    if (!file.organisationId) {
+      throw new ForbiddenException('You cannot access this file.');
+    }
+
+    await this.organisationAccess.assertMembership(
+      file.organisationId,
+      currentUserId,
+    );
+  }
+
+  private async assertDeleteAccess(
+    file: { scope: FileScope; userId: string; organisationId: string | null },
+    currentUserId: string,
+  ): Promise<void> {
+    if (file.scope === FileScope.USER) {
+      if (file.userId !== currentUserId) {
+        throw new ForbiddenException('You can only delete your own files.');
+      }
+      return;
+    }
+
+    if (!file.organisationId) {
+      throw new ForbiddenException('You cannot delete this file.');
+    }
+
+    if (file.userId === currentUserId) {
+      // Uploader can always delete their own organisation file.
+      await this.organisationAccess.assertMembership(
+        file.organisationId,
+        currentUserId,
+      );
+      return;
+    }
+
+    const role = await this.organisationAccess.assertMembership(
+      file.organisationId,
+      currentUserId,
+    );
+
+    if (role !== OrganisationRole.OWNER) {
+      throw new ForbiddenException(
+        'Only the uploader or an organisation owner can delete this file.',
+      );
+    }
   }
 
   private buildScopeOwnerFolderFilter(

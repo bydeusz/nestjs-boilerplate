@@ -5,70 +5,90 @@ jest.mock('./users.service', () => ({
   UsersService: class UsersService {},
 }));
 
+jest.mock('../organisations/organisation-access.service', () => ({
+  OrganisationAccessService: class OrganisationAccessService {},
+}));
+
 describe('UsersController', () => {
   const usersService = {
-    updateAdminRoleForOrganisationUser: jest.fn().mockResolvedValue({
-      id: 'target-user',
-      name: 'Jane',
-      surname: 'Doe',
-      email: 'jane@example.com',
-      isAdmin: true,
-      isActive: true,
-      organisationIds: ['org-1'],
-      avatarUrl: null,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    }),
     update: jest.fn(),
+    findOne: jest.fn(),
+    remove: jest.fn(),
+    findAllInSharedOrganisations: jest.fn(),
+  };
+  const organisationAccess = {
+    sharesOrganisationWith: jest.fn(),
   };
 
   let controller: UsersController;
 
   beforeEach(() => {
     jest.clearAllMocks();
-    controller = new UsersController(usersService as never);
-  });
-
-  it('allows admin to update isAdmin through patch route', async () => {
-    await controller.update(
-      'target-user',
-      { isAdmin: true },
-      'current-user',
-      true,
-    );
-
-    expect(usersService.updateAdminRoleForOrganisationUser).toHaveBeenCalledWith(
-      'target-user',
-      'current-user',
-      true,
-      undefined,
+    controller = new UsersController(
+      usersService as never,
+      organisationAccess as never,
     );
   });
 
-  it('allows admin to update organisationIds through patch route', async () => {
-    await controller.update(
-      'target-user',
-      { organisationIds: ['550e8400-e29b-41d4-a716-446655440000'] },
-      'current-user',
-      true,
-    );
+  describe('update', () => {
+    it('allows self-update of own profile', async () => {
+      await controller.update(
+        'user-1',
+        { name: 'Jane' },
+        'user-1',
+      );
 
-    expect(usersService.updateAdminRoleForOrganisationUser).toHaveBeenCalledWith(
-      'target-user',
-      'current-user',
-      undefined,
-      ['550e8400-e29b-41d4-a716-446655440000'],
-    );
+      expect(usersService.update).toHaveBeenCalledWith('user-1', { name: 'Jane' });
+    });
+
+    it('blocks updating another user', () => {
+      expect(() =>
+        controller.update('user-2', { name: 'Jane' }, 'user-1'),
+      ).toThrow(ForbiddenException);
+    });
   });
 
-  it('blocks isAdmin and organisationIds updates for non-admin users', async () => {
-    expect(() =>
-      controller.update(
-        'target-user',
-        { isAdmin: true, organisationIds: [] },
-        'current-user',
-        false,
-      ),
-    ).toThrow(ForbiddenException);
+  describe('findOne', () => {
+    it('allows fetching own user without org check', async () => {
+      await controller.findOne('user-1', 'user-1');
+
+      expect(organisationAccess.sharesOrganisationWith).not.toHaveBeenCalled();
+      expect(usersService.findOne).toHaveBeenCalledWith('user-1');
+    });
+
+    it('allows fetching a user that shares an organisation', async () => {
+      organisationAccess.sharesOrganisationWith.mockResolvedValue(true);
+
+      await controller.findOne('user-2', 'user-1');
+
+      expect(organisationAccess.sharesOrganisationWith).toHaveBeenCalledWith(
+        'user-1',
+        'user-2',
+      );
+      expect(usersService.findOne).toHaveBeenCalledWith('user-2');
+    });
+
+    it('blocks fetching a user that does not share an organisation', async () => {
+      organisationAccess.sharesOrganisationWith.mockResolvedValue(false);
+
+      await expect(controller.findOne('user-2', 'user-1')).rejects.toThrow(
+        ForbiddenException,
+      );
+      expect(usersService.findOne).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('remove', () => {
+    it('allows self-delete', async () => {
+      await controller.remove('user-1', 'user-1');
+
+      expect(usersService.remove).toHaveBeenCalledWith('user-1');
+    });
+
+    it('blocks deleting another user', () => {
+      expect(() => controller.remove('user-2', 'user-1')).toThrow(
+        ForbiddenException,
+      );
+    });
   });
 });

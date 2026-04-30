@@ -15,6 +15,7 @@ import {
   generatePassword,
   hashPassword,
 } from '../../common/utils';
+import { OrganisationRole } from '../../generated/prisma/enums';
 import { PrismaService } from '../../prisma/prisma.service';
 import { MAIL_JOB_SEND, QueueService } from '../queue';
 import { UsersService } from '../users/users.service';
@@ -30,7 +31,6 @@ import { JwtPayload } from './interfaces/jwt-payload.interface';
 interface TokenUser {
   id: string;
   email: string;
-  isAdmin: boolean;
 }
 
 @Injectable()
@@ -47,7 +47,6 @@ export class AuthService {
     const payload: JwtPayload = {
       sub: user.id,
       email: user.email,
-      isAdmin: user.isAdmin,
     };
     const refreshToken = await this.createAndStoreRefreshToken(user.id);
 
@@ -104,9 +103,32 @@ export class AuthService {
       throw new ConflictException('A user with this email already exists.');
     }
 
-    const user = await this.usersService.createFromRegistration(registerDto);
-    await this.prisma.activationCode.deleteMany({
-      where: { userId: user.id },
+    const hashedPassword = await hashPassword(registerDto.password);
+
+    const user = await this.prisma.$transaction(async (tx) => {
+      const createdUser = await tx.user.create({
+        data: {
+          name: registerDto.name,
+          surname: registerDto.surname,
+          email: registerDto.email,
+          password: hashedPassword,
+          isActive: false,
+        },
+      });
+
+      await tx.organisation.create({
+        data: {
+          name: registerDto.organisationName,
+          members: {
+            create: {
+              userId: createdUser.id,
+              role: OrganisationRole.OWNER,
+            },
+          },
+        },
+      });
+
+      return createdUser;
     });
 
     const activationCode = await this.createActivationCode(user.id);
@@ -204,7 +226,6 @@ export class AuthService {
     return this.generateTokens({
       id: refreshTokenRecord.user.id,
       email: refreshTokenRecord.user.email,
-      isAdmin: refreshTokenRecord.user.isAdmin,
     });
   }
 

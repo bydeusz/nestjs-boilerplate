@@ -8,55 +8,58 @@ import {
   Param,
   ParseUUIDPipe,
   Patch,
-  Post,
   Query,
   UseInterceptors,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { PaginationQueryDto } from '../../common/dto';
-import { CurrentUser, Roles } from '../../common/decorators';
-import { Role } from '../../common/enums';
+import { CurrentUser } from '../../common/decorators';
 import { PaginatedResult } from '../../common/interfaces';
-import { CreateUserDto, UpdateUserDto, UserResponseDto } from './dto';
+import { OrganisationAccessService } from '../organisations/organisation-access.service';
+import { UpdateUserDto, UserResponseDto } from './dto';
 import { UsersService } from './users.service';
 
 @Controller('users')
 @ApiTags('Users')
 @ApiBearerAuth()
-@Roles(Role.Admin)
 @UseInterceptors(CacheInterceptor)
 export class UsersController {
-  constructor(private readonly usersService: UsersService) {}
-
-  @ApiOperation({ operationId: 'UserCreate' })
-  @Post()
-  create(@Body() createUserDto: CreateUserDto): Promise<UserResponseDto> {
-    return this.usersService.create(createUserDto);
-  }
+  constructor(
+    private readonly usersService: UsersService,
+    private readonly organisationAccess: OrganisationAccessService,
+  ) {}
 
   @ApiOperation({ operationId: 'UserGetList' })
   @Get()
-  @Roles(Role.Admin, Role.User)
   @CacheTTL(30000)
   findAll(
     @Query() query: PaginationQueryDto,
+    @CurrentUser('sub') currentUserId: string,
   ): Promise<PaginatedResult<UserResponseDto>> {
-    return this.usersService.findAll(query);
+    return this.usersService.findAllInSharedOrganisations(
+      currentUserId,
+      query,
+    );
   }
 
   @ApiOperation({ operationId: 'UserGet' })
   @Get(':id')
-  @Roles(Role.Admin, Role.User)
   @CacheTTL(60000)
-  findOne(
+  async findOne(
     @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser('sub') currentUserId: string,
-    @CurrentUser('isAdmin') isAdmin: boolean,
   ): Promise<UserResponseDto> {
-    if (!isAdmin && currentUserId !== id) {
-      throw new ForbiddenException(
-        'You can only access your own user details.',
+    if (currentUserId !== id) {
+      const shared = await this.organisationAccess.sharesOrganisationWith(
+        currentUserId,
+        id,
       );
+
+      if (!shared) {
+        throw new ForbiddenException(
+          'You can only access users in your organisations.',
+        );
+      }
     }
 
     return this.usersService.findOne(id);
@@ -64,36 +67,14 @@ export class UsersController {
 
   @ApiOperation({ operationId: 'UserUpdate' })
   @Patch(':id')
-  @Roles(Role.Admin, Role.User)
   update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() updateUserDto: UpdateUserDto,
     @CurrentUser('sub') currentUserId: string,
-    @CurrentUser('isAdmin') isAdmin: boolean,
   ): Promise<UserResponseDto> {
-    const isAdminValue = updateUserDto.isAdmin;
-    const isAdminUpdateRequested = typeof isAdminValue === 'boolean';
-    const organisationIdsValue = updateUserDto.organisationIds;
-    const organisationUpdateRequested = Array.isArray(organisationIdsValue);
-
-    if (isAdminUpdateRequested || organisationUpdateRequested) {
-      if (!isAdmin) {
-        throw new ForbiddenException(
-          'Only admins can change isAdmin or organisationIds.',
-        );
-      }
-
-      return this.usersService.updateAdminRoleForOrganisationUser(
-        id,
-        currentUserId,
-        isAdminValue,
-        organisationIdsValue,
-      );
-    }
-
     if (currentUserId !== id) {
       throw new ForbiddenException(
-        'Only the user can update their own profile details.',
+        'You can only update your own profile details.',
       );
     }
 
@@ -102,13 +83,11 @@ export class UsersController {
 
   @ApiOperation({ operationId: 'UserDelete' })
   @Delete(':id')
-  @Roles(Role.Admin, Role.User)
   remove(
     @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser('sub') currentUserId: string,
-    @CurrentUser('isAdmin') isAdmin: boolean,
   ): Promise<UserResponseDto> {
-    if (!isAdmin && currentUserId !== id) {
+    if (currentUserId !== id) {
       throw new ForbiddenException('You can only delete your own account.');
     }
 

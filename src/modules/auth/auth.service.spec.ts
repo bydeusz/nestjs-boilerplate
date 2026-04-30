@@ -42,6 +42,10 @@ describe('AuthService', () => {
     },
     user: {
       update: jest.fn(),
+      create: jest.fn(),
+    },
+    organisation: {
+      create: jest.fn(),
     },
     $transaction: jest.fn(),
   };
@@ -49,7 +53,6 @@ describe('AuthService', () => {
     findByEmail: jest.fn(),
     findById: jest.fn(),
     updatePassword: jest.fn(),
-    createFromRegistration: jest.fn(),
   };
   const queueService = {
     addMailJob: jest.fn().mockResolvedValue(undefined),
@@ -124,7 +127,6 @@ describe('AuthService', () => {
     usersService.findByEmail.mockResolvedValue({
       id: 'user-1',
       email: 'john@example.com',
-      isAdmin: false,
       isActive: true,
       mustChangePassword: true,
       password: hashedPassword,
@@ -142,7 +144,6 @@ describe('AuthService', () => {
       email: 'john@example.com',
       name: 'John',
       surname: 'Doe',
-      isAdmin: false,
       password: hashedPassword,
     });
     usersService.updatePassword.mockResolvedValue(undefined);
@@ -160,15 +161,19 @@ describe('AuthService', () => {
     );
   });
 
-  it('sends activation mail with email-only verify URL on register', async () => {
+  it('creates user, organisation and OWNER membership on register', async () => {
     usersService.findByEmail.mockResolvedValue(null);
-    usersService.createFromRegistration.mockResolvedValue({
+    prisma.$transaction.mockImplementation(
+      async (callback: (tx: unknown) => Promise<unknown>) =>
+        callback(prisma),
+    );
+    prisma.user.create.mockResolvedValue({
       id: 'user-1',
       email: 'john@example.com',
       name: 'John',
       surname: 'Doe',
     });
-    prisma.activationCode.deleteMany.mockResolvedValue({ count: 0 });
+    prisma.organisation.create.mockResolvedValue({ id: 'org-1' });
     prisma.activationCode.create.mockResolvedValue({
       code: '123456',
       expiresAt: new Date(Date.now() + 60_000),
@@ -179,8 +184,27 @@ describe('AuthService', () => {
       name: 'John',
       surname: 'Doe',
       password: 'Secret123!',
+      organisationName: 'Acme',
     });
 
+    expect(prisma.user.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          email: 'john@example.com',
+          isActive: false,
+        }),
+      }),
+    );
+    expect(prisma.organisation.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          name: 'Acme',
+          members: {
+            create: { userId: 'user-1', role: 'OWNER' },
+          },
+        }),
+      }),
+    );
     expect(queueService.addMailJob).toHaveBeenCalledWith(
       expect.any(String),
       expect.objectContaining({
