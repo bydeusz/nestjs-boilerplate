@@ -11,6 +11,7 @@ model User {
   memberships        OrganisationMember[]
   refreshTokens      RefreshToken[]
   activationCodes    ActivationCode[]
+  emailChangeRequests EmailChangeRequest[]
   files              File[]
   createdAt          DateTime         @default(now())
   updatedAt          DateTime         @updatedAt

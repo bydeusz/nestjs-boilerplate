@@ -64,8 +64,8 @@ export default () => ({
   },
   storage: {
     endpoint: process.env.S3_ENDPOINT ?? 'http://localhost:9000',
-    accessKey: process.env.S3_ACCESS_KEY ?? 'minioadmin',
-    secretKey: process.env.S3_SECRET_KEY ?? 'minioadmin',
+    accessKey: process.env.S3_ACCESS_KEY,
+    secretKey: process.env.S3_SECRET_KEY,
     bucket: process.env.S3_BUCKET ?? 'uploads',
   },
 });

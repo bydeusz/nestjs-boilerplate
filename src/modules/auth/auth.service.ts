@@ -358,6 +358,102 @@ export class AuthService {
     return this.usersService.findOne(userId);
   }
 
+  async requestEmailChange(
+    userId: string,
+    newEmailRaw: string,
+  ): Promise<MessageResponseDto> {
+    const user = await this.usersService.findById(userId);
+    if (!user) {
+      throw new UnauthorizedException('User not found.');
+    }
+
+    const newEmail = newEmailRaw.trim().toLowerCase();
+
+    if (newEmail === user.email.toLowerCase()) {
+      throw new BadRequestException(
+        'New email is the same as the current email.',
+      );
+    }
+
+    this.validateEmailDomain(newEmail);
+
+    const existing = await this.usersService.findByEmail(newEmail);
+    if (existing) {
+      throw new ConflictException('A user with this email already exists.');
+    }
+
+    await this.prisma.emailChangeRequest.deleteMany({
+      where: { userId: user.id },
+    });
+
+    const token = randomBytes(32).toString('hex');
+    const expiresAt = this.buildEmailChangeExpiryDate();
+
+    await this.prisma.emailChangeRequest.create({
+      data: {
+        userId: user.id,
+        token,
+        newEmail,
+        expiresAt,
+      },
+    });
+
+    const confirmUrl = this.buildEmailChangeConfirmUrl(token);
+    const fullName = `${user.name} ${user.surname}`.trim();
+
+    await this.sendEmailChangeConfirmationEmail(
+      newEmail,
+      fullName,
+      confirmUrl,
+    );
+    await this.sendEmailChangeNoticeEmail(user.email, fullName, newEmail);
+
+    return {
+      message:
+        'Confirmation email sent. Check your new inbox to complete the change.',
+    };
+  }
+
+  async confirmEmailChange(token: string): Promise<MessageResponseDto> {
+    const request = await this.prisma.emailChangeRequest.findUnique({
+      where: { token },
+      include: { user: true },
+    });
+
+    if (!request) {
+      throw new BadRequestException('Invalid or expired confirmation token.');
+    }
+
+    if (request.expiresAt <= new Date()) {
+      await this.prisma.emailChangeRequest.delete({
+        where: { id: request.id },
+      });
+      throw new BadRequestException('Invalid or expired confirmation token.');
+    }
+
+    const inUse = await this.usersService.findByEmail(request.newEmail);
+    if (inUse && inUse.id !== request.userId) {
+      await this.prisma.emailChangeRequest.delete({
+        where: { id: request.id },
+      });
+      throw new ConflictException('A user with this email already exists.');
+    }
+
+    await this.prisma.$transaction([
+      this.prisma.user.update({
+        where: { id: request.userId },
+        data: { email: request.newEmail },
+      }),
+      this.prisma.emailChangeRequest.deleteMany({
+        where: { userId: request.userId },
+      }),
+    ]);
+
+    await this.revokeAllUserTokens(request.userId);
+
+    return { message: 'Email address has been updated. Please sign in again.' };
+  }
+
   private validateEmailDomain(email: string): void {
     const allowedDomains =
       this.configService.get<string[]>('auth.allowedEmailDomains') ?? [];
@@ -389,6 +485,52 @@ export class AuthService {
 
   private buildTemporaryPasswordExpiryDate(): Date {
     return new Date(Date.now() + 30 * 60 * 1000);
+  }
+
+  private buildEmailChangeExpiryDate(): Date {
+    return new Date(Date.now() + 60 * 60 * 1000);
+  }
+
+  private buildEmailChangeConfirmUrl(token: string): string {
+    const frontendUrl = this.configService.get<string>(
+      'auth.frontendUrl',
+      'http://localhost:3000',
+    );
+    const url = new URL('/email-change/confirm', frontendUrl);
+    url.searchParams.set('token', token);
+    return url.toString();
+  }
+
+  private async sendEmailChangeConfirmationEmail(
+    email: string,
+    name: string,
+    confirmUrl: string,
+  ): Promise<void> {
+    await this.queueService.addMailJob(MAIL_JOB_SEND, {
+      to: email,
+      subject: 'Confirm your new email address',
+      template: 'email-change-confirmation',
+      context: {
+        name,
+        confirmUrl,
+      },
+    });
+  }
+
+  private async sendEmailChangeNoticeEmail(
+    email: string,
+    name: string,
+    newEmail: string,
+  ): Promise<void> {
+    await this.queueService.addMailJob(MAIL_JOB_SEND, {
+      to: email,
+      subject: 'Email change requested',
+      template: 'email-change-notice',
+      context: {
+        name,
+        newEmail,
+      },
+    });
   }
 
   private generateActivationCode(): string {
