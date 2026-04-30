@@ -1,7 +1,6 @@
 import {
   IsArray,
   IsBoolean,
-  IsEmail,
   IsOptional,
   IsString,
   IsUUID,
@@ -15,10 +14,6 @@ export class UpdateUserDto {
   @IsOptional()
   @IsString()
   surname?: string;
-
-  @IsOptional()
-  @IsEmail()
-  email?: string;
 
   @IsOptional()
   @IsBoolean()
