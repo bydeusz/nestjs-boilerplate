@@ -171,19 +171,14 @@ describe('AuthService', () => {
     );
   });
 
-  it('creates user, organisation and OWNER membership on register', async () => {
+  it('creates a user and sends an activation email on register', async () => {
     usersService.findByEmail.mockResolvedValue(null);
-    prisma.$transaction.mockImplementation(
-      async (callback: (tx: unknown) => Promise<unknown>) =>
-        callback(prisma),
-    );
     prisma.user.create.mockResolvedValue({
       id: 'user-1',
       email: 'john@example.com',
       name: 'John',
       surname: 'Doe',
     });
-    prisma.organisation.create.mockResolvedValue({ id: 'org-1' });
     prisma.activationCode.create.mockResolvedValue({
       code: '123456',
       expiresAt: new Date(Date.now() + 60_000),
@@ -194,7 +189,6 @@ describe('AuthService', () => {
       name: 'John',
       surname: 'Doe',
       password: 'Secret123!',
-      organisationName: 'Acme',
     });
 
     expect(prisma.user.create).toHaveBeenCalledWith(
@@ -205,16 +199,7 @@ describe('AuthService', () => {
         }),
       }),
     );
-    expect(prisma.organisation.create).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({
-          name: 'Acme',
-          members: {
-            create: { userId: 'user-1', role: 'OWNER' },
-          },
-        }),
-      }),
-    );
+    expect(prisma.organisation.create).not.toHaveBeenCalled();
     expect(queueService.addMailJob).toHaveBeenCalledWith(
       expect.any(String),
       expect.objectContaining({

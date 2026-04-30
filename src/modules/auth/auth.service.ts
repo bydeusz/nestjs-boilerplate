@@ -15,7 +15,6 @@ import {
   generatePassword,
   hashPassword,
 } from '../../common/utils';
-import { OrganisationRole } from '../../generated/prisma/enums';
 import { PrismaService } from '../../prisma/prisma.service';
 import { MAIL_JOB_SEND, QueueService } from '../queue';
 import { UsersService } from '../users/users.service';
@@ -105,30 +104,14 @@ export class AuthService {
 
     const hashedPassword = await hashPassword(registerDto.password);
 
-    const user = await this.prisma.$transaction(async (tx) => {
-      const createdUser = await tx.user.create({
-        data: {
-          name: registerDto.name,
-          surname: registerDto.surname,
-          email: registerDto.email,
-          password: hashedPassword,
-          isActive: false,
-        },
-      });
-
-      await tx.organisation.create({
-        data: {
-          name: registerDto.organisationName,
-          members: {
-            create: {
-              userId: createdUser.id,
-              role: OrganisationRole.OWNER,
-            },
-          },
-        },
-      });
-
-      return createdUser;
+    const user = await this.prisma.user.create({
+      data: {
+        name: registerDto.name,
+        surname: registerDto.surname,
+        email: registerDto.email,
+        password: hashedPassword,
+        isActive: false,
+      },
     });
 
     const activationCode = await this.createActivationCode(user.id);
