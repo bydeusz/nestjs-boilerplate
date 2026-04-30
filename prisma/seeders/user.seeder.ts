@@ -1,91 +1,111 @@
-import { PrismaClient } from '../../src/generated/prisma/client';
+import {
+  OrganisationRole,
+  PrismaClient,
+} from '../../src/generated/prisma/client';
 import { hashPassword } from '../../src/common/utils';
 import { SeededOrganisationIds } from './organisation.seeder';
+
+interface SeedUser {
+  name: string;
+  surname: string;
+  email: string;
+  organisations: Array<{
+    organisationId: string;
+    role: OrganisationRole;
+  }>;
+}
 
 export async function seedUsers(
   prisma: PrismaClient,
   organisationIds: SeededOrganisationIds,
 ): Promise<void> {
   const passwordHash = await hashPassword('Admin123!');
-  const defaultOrganisationIds = [organisationIds.bydeusz];
-  const johnDoeOrganisationIds = [
-    organisationIds.bydeusz,
-    organisationIds.nike,
-  ];
 
-  const users: Array<{
-    name: string;
-    surname: string;
-    email: string;
-    isAdmin: boolean;
-  }> = [
+  const users: SeedUser[] = [
     {
       name: 'John',
       surname: 'Doe',
       email: 'john.doe@bydeusz.com',
-      isAdmin: true,
+      organisations: [
+        { organisationId: organisationIds.bydeusz, role: OrganisationRole.OWNER },
+        { organisationId: organisationIds.nike, role: OrganisationRole.MEMBER },
+      ],
     },
     {
       name: 'Jane',
       surname: 'Admin',
       email: 'jane.admin@bydeusz.com',
-      isAdmin: true,
+      organisations: [
+        { organisationId: organisationIds.bydeusz, role: OrganisationRole.OWNER },
+      ],
     },
     {
       name: 'John',
       surname: 'Smith',
       email: 'john.smith@bydeusz.com',
-      isAdmin: false,
+      organisations: [
+        { organisationId: organisationIds.bydeusz, role: OrganisationRole.MEMBER },
+      ],
     },
     {
       name: 'Anna',
       surname: 'Jansen',
       email: 'anna.jansen@bydeusz.com',
-      isAdmin: false,
+      organisations: [
+        { organisationId: organisationIds.bydeusz, role: OrganisationRole.MEMBER },
+      ],
     },
     {
       name: 'Tom',
       surname: 'Bakker',
       email: 'tom.bakker@bydeusz.com',
-      isAdmin: false,
+      organisations: [
+        { organisationId: organisationIds.bydeusz, role: OrganisationRole.MEMBER },
+      ],
     },
     {
       name: 'Lisa',
       surname: 'Visser',
       email: 'lisa.visser@bydeusz.com',
-      isAdmin: false,
+      organisations: [
+        { organisationId: organisationIds.nike, role: OrganisationRole.OWNER },
+      ],
     },
   ];
 
   for (const user of users) {
-    const organisationIdsForUser =
-      user.email === 'john.doe@bydeusz.com'
-        ? johnDoeOrganisationIds
-        : defaultOrganisationIds;
-
-    await prisma.user.upsert({
+    const created = await prisma.user.upsert({
       where: { email: user.email },
       update: {
         name: user.name,
         surname: user.surname,
         password: passwordHash,
-        isAdmin: user.isAdmin,
         isActive: true,
-        organisations: {
-          set: organisationIdsForUser.map((id) => ({ id })),
-        },
       },
       create: {
         name: user.name,
         surname: user.surname,
         email: user.email,
         password: passwordHash,
-        isAdmin: user.isAdmin,
         isActive: true,
-        organisations: {
-          connect: organisationIdsForUser.map((id) => ({ id })),
-        },
       },
     });
+
+    for (const membership of user.organisations) {
+      await prisma.organisationMember.upsert({
+        where: {
+          userId_organisationId: {
+            userId: created.id,
+            organisationId: membership.organisationId,
+          },
+        },
+        update: { role: membership.role },
+        create: {
+          userId: created.id,
+          organisationId: membership.organisationId,
+          role: membership.role,
+        },
+      });
+    }
   }
 }
