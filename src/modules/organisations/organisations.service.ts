@@ -224,97 +224,103 @@ export class OrganisationsService {
   ): Promise<OrganisationMemberResponseDto> {
     await this.organisationAccess.assertOwnership(organisationId, actorId);
 
-    const organisation = await this.prisma.organisation.findUnique({
-      where: { id: organisationId },
-      select: { id: true, name: true },
-    });
-    if (!organisation) {
-      throw new NotFoundException('Organisation not found.');
-    }
-
     const email = dto.email.trim().toLowerCase();
     const role = dto.role ?? OrganisationRole.MEMBER;
 
-    const existingUser = await this.prisma.user.findUnique({
-      where: { email },
-      select: { id: true, name: true, surname: true },
-    });
+    type InviteOutcome = {
+      member: MemberWithUser;
+      newUserCredentials: { name: string; password: string } | null;
+    };
 
-    let userId: string;
-    let isNewUser = false;
-    let temporaryPassword: string | null = null;
-    let inviteeFullName: string;
-
-    if (existingUser) {
-      const duplicateMembership =
-        await this.prisma.organisationMember.findUnique({
-          where: {
-            userId_organisationId: { userId: existingUser.id, organisationId },
-          },
+    let outcome: InviteOutcome;
+    try {
+      outcome = await this.prisma.$transaction(async (tx) => {
+        const existingUser = await tx.user.findUnique({
+          where: { email },
           select: { id: true },
         });
-      if (duplicateMembership) {
-        throw new ConflictException('User is already a member.');
-      }
 
-      userId = existingUser.id;
-      inviteeFullName = `${existingUser.name} ${existingUser.surname}`.trim();
-    } else {
-      const name = dto.name?.trim();
-      const surname = dto.surname?.trim();
-      if (!name || !surname) {
-        throw new BadRequestException(
-          'Name and surname are required for new users.',
-        );
-      }
-      this.validateEmailDomain(email);
+        let userId: string;
+        let newUserCredentials: InviteOutcome['newUserCredentials'] = null;
 
-      isNewUser = true;
-      temporaryPassword = generatePassword(16);
-      const hashedPassword = await hashPassword(temporaryPassword);
-      const temporaryPasswordExpiresAt = new Date(Date.now() + 30 * 60 * 1000);
+        if (existingUser) {
+          userId = existingUser.id;
+        } else {
+          const name = dto.name?.trim();
+          const surname = dto.surname?.trim();
+          if (!name || !surname) {
+            throw new BadRequestException(
+              'Name and surname are required for new users.',
+            );
+          }
+          this.validateEmailDomain(email);
 
-      const created = await this.prisma.user.create({
-        data: {
-          name,
-          surname,
-          email,
-          password: hashedPassword,
-          isActive: true,
-          mustChangePassword: true,
-          temporaryPasswordExpiresAt,
-        },
-        select: { id: true, name: true, surname: true },
+          const tempPassword = generatePassword(16);
+          const hashedPassword = await hashPassword(tempPassword);
+
+          const created = await tx.user.create({
+            data: {
+              name,
+              surname,
+              email,
+              password: hashedPassword,
+              isActive: true,
+              mustChangePassword: true,
+              temporaryPasswordExpiresAt: new Date(Date.now() + 30 * 60 * 1000),
+            },
+            select: { id: true, name: true, surname: true },
+          });
+          userId = created.id;
+          newUserCredentials = {
+            name: `${created.name} ${created.surname}`.trim(),
+            password: tempPassword,
+          };
+        }
+
+        let member: MemberWithUser;
+        try {
+          member = await tx.organisationMember.create({
+            data: { userId, organisationId, role },
+            select: memberSelect,
+          });
+        } catch (err) {
+          if (
+            err instanceof Prisma.PrismaClientKnownRequestError &&
+            err.code === 'P2002'
+          ) {
+            throw new ConflictException('User is already a member.');
+          }
+          throw err;
+        }
+
+        return { member, newUserCredentials };
       });
-
-      userId = created.id;
-      inviteeFullName = `${created.name} ${created.surname}`.trim();
+    } catch (err) {
+      // P2002 escaping the tx = concurrent invite created the same email first.
+      if (
+        err instanceof Prisma.PrismaClientKnownRequestError &&
+        err.code === 'P2002'
+      ) {
+        throw new ConflictException('A user with this email already exists.');
+      }
+      throw err;
     }
 
-    await this.prisma.organisationMember.create({
-      data: { userId, organisationId, role },
-    });
-
-    if (isNewUser && temporaryPassword) {
+    if (outcome.newUserCredentials) {
       await this.queueService.addMailJob(MAIL_JOB_SEND, {
         to: email,
         subject: 'Your account has been created',
         template: 'new-user-credentials',
         context: {
-          name: inviteeFullName,
-          password: temporaryPassword,
+          name: outcome.newUserCredentials.name,
+          password: outcome.newUserCredentials.password,
         },
       });
     }
 
     await this.invalidateCache();
 
-    const member = await this.prisma.organisationMember.findUniqueOrThrow({
-      where: { userId_organisationId: { userId, organisationId } },
-      select: memberSelect,
-    });
-
-    return this.toMemberResponseDto(member);
+    return this.toMemberResponseDto(outcome.member);
   }
 
   async updateMemberRole(
