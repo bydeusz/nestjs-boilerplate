@@ -331,51 +331,42 @@ export class OrganisationsService {
   ): Promise<OrganisationMemberResponseDto> {
     await this.organisationAccess.assertOwnership(organisationId, actorId);
 
-    const membership = await this.prisma.organisationMember.findUnique({
-      where: {
-        userId_organisationId: { userId: targetUserId, organisationId },
-      },
-      select: { role: true },
-    });
-    if (!membership) {
-      throw new NotFoundException('Member not found.');
-    }
-
-    if (membership.role === dto.role) {
-      const current = await this.prisma.organisationMember.findUniqueOrThrow({
+    const updated = await this.withSerializableRetry(async (tx) => {
+      const membership = await tx.organisationMember.findUnique({
         where: {
           userId_organisationId: { userId: targetUserId, organisationId },
         },
         select: memberSelect,
       });
-      return this.toMemberResponseDto(current);
-    }
+      if (!membership) {
+        throw new NotFoundException('Member not found.');
+      }
 
-    if (
-      membership.role === OrganisationRole.OWNER &&
-      dto.role === OrganisationRole.MEMBER
-    ) {
-      await this.assertNotLastOwner(
-        organisationId,
-        'Cannot demote the last owner.',
-      );
-    }
+      if (membership.role === dto.role) {
+        return membership;
+      }
 
-    await this.prisma.organisationMember.update({
-      where: {
-        userId_organisationId: { userId: targetUserId, organisationId },
-      },
-      data: { role: dto.role },
+      if (
+        membership.role === OrganisationRole.OWNER &&
+        dto.role === OrganisationRole.MEMBER
+      ) {
+        await this.assertNotLastOwner(
+          tx,
+          organisationId,
+          'Cannot demote the last owner.',
+        );
+      }
+
+      return tx.organisationMember.update({
+        where: {
+          userId_organisationId: { userId: targetUserId, organisationId },
+        },
+        data: { role: dto.role },
+        select: memberSelect,
+      });
     });
 
     await this.invalidateCache();
-
-    const updated = await this.prisma.organisationMember.findUniqueOrThrow({
-      where: {
-        userId_organisationId: { userId: targetUserId, organisationId },
-      },
-      select: memberSelect,
-    });
 
     return this.toMemberResponseDto(updated);
   }
@@ -391,28 +382,31 @@ export class OrganisationsService {
       await this.organisationAccess.assertMembership(organisationId, actorId);
     }
 
-    const membership = await this.prisma.organisationMember.findUnique({
-      where: {
-        userId_organisationId: { userId: targetUserId, organisationId },
-      },
-      select: { role: true },
-    });
-    if (!membership) {
-      throw new NotFoundException('Member not found.');
-    }
+    const removed = await this.withSerializableRetry(async (tx) => {
+      const membership = await tx.organisationMember.findUnique({
+        where: {
+          userId_organisationId: { userId: targetUserId, organisationId },
+        },
+        select: { role: true },
+      });
+      if (!membership) {
+        throw new NotFoundException('Member not found.');
+      }
 
-    if (membership.role === OrganisationRole.OWNER) {
-      await this.assertNotLastOwner(
-        organisationId,
-        'Cannot remove the last owner.',
-      );
-    }
+      if (membership.role === OrganisationRole.OWNER) {
+        await this.assertNotLastOwner(
+          tx,
+          organisationId,
+          'Cannot remove the last owner.',
+        );
+      }
 
-    const removed = await this.prisma.organisationMember.delete({
-      where: {
-        userId_organisationId: { userId: targetUserId, organisationId },
-      },
-      select: memberSelect,
+      return tx.organisationMember.delete({
+        where: {
+          userId_organisationId: { userId: targetUserId, organisationId },
+        },
+        select: memberSelect,
+      });
     });
 
     await this.invalidateCache();
@@ -421,14 +415,46 @@ export class OrganisationsService {
   }
 
   private async assertNotLastOwner(
+    tx: Prisma.TransactionClient,
     organisationId: string,
     message: string,
   ): Promise<void> {
-    const ownerCount = await this.prisma.organisationMember.count({
+    const ownerCount = await tx.organisationMember.count({
       where: { organisationId, role: OrganisationRole.OWNER },
     });
     if (ownerCount <= 1) {
       throw new BadRequestException(message);
+    }
+  }
+
+  /**
+   * Runs `callback` inside a SERIALIZABLE transaction and retries on
+   * Postgres serialization failures (Prisma error P2034). Use for
+   * read-then-write flows where the read predicate must hold at commit
+   * time (e.g. last-owner protection).
+   */
+  private async withSerializableRetry<T>(
+    callback: (tx: Prisma.TransactionClient) => Promise<T>,
+    maxAttempts = 3,
+  ): Promise<T> {
+    let attempt = 0;
+    while (true) {
+      attempt += 1;
+      try {
+        return await this.prisma.$transaction(callback, {
+          isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+        });
+      } catch (err) {
+        const isRetriable =
+          err instanceof Prisma.PrismaClientKnownRequestError &&
+          err.code === 'P2034';
+        if (!isRetriable || attempt >= maxAttempts) {
+          throw err;
+        }
+        await new Promise((resolve) =>
+          setTimeout(resolve, 25 * attempt + Math.random() * 25),
+        );
+      }
     }
   }
 
