@@ -32,13 +32,11 @@ describe('UsersController', () => {
 
   describe('update', () => {
     it('allows self-update of own profile', async () => {
-      await controller.update(
-        'user-1',
-        { name: 'Jane' },
-        'user-1',
-      );
+      await controller.update('user-1', { name: 'Jane' }, 'user-1');
 
-      expect(usersService.update).toHaveBeenCalledWith('user-1', { name: 'Jane' });
+      expect(usersService.update).toHaveBeenCalledWith('user-1', {
+        name: 'Jane',
+      });
     });
 
     it('blocks updating another user', () => {

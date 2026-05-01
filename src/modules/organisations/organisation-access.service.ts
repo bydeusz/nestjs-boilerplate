@@ -24,10 +24,7 @@ export class OrganisationAccessService {
     return membership.role;
   }
 
-  async assertOwnership(
-    organisationId: string,
-    userId: string,
-  ): Promise<void> {
+  async assertOwnership(organisationId: string, userId: string): Promise<void> {
     const role = await this.assertMembership(organisationId, userId);
 
     if (role !== OrganisationRole.OWNER) {

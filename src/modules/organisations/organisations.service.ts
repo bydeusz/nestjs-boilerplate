@@ -1,16 +1,32 @@
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import type { Cache } from 'cache-manager';
 import { PaginationQueryDto } from '../../common/dto';
 import { PaginatedResult } from '../../common/interfaces';
-import { buildPaginationMeta, buildPrismaSkipTake } from '../../common/utils';
+import {
+  buildPaginationMeta,
+  buildPrismaSkipTake,
+  generatePassword,
+  hashPassword,
+} from '../../common/utils';
 import { OrganisationRole, Prisma } from '../../generated/prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
+import { MAIL_JOB_SEND, QueueService } from '../queue';
 import { StorageService } from '../storage';
 import { OrganisationAccessService } from './organisation-access.service';
 import {
   CreateOrganisationDto,
+  InviteMemberDto,
+  OrganisationMemberResponseDto,
   OrganisationResponseDto,
+  UpdateMemberRoleDto,
   UpdateOrganisationDto,
 } from './dto';
 
@@ -31,12 +47,39 @@ type OrganisationPublic = Prisma.OrganisationGetPayload<{
   select: typeof organisationPublicSelect;
 }>;
 
+const memberUserSelect = {
+  id: true,
+  name: true,
+  surname: true,
+  email: true,
+  isActive: true,
+  avatarUrl: true,
+  createdAt: true,
+  updatedAt: true,
+  memberships: { select: { organisationId: true } },
+} satisfies Prisma.UserSelect;
+
+const memberSelect = {
+  id: true,
+  userId: true,
+  organisationId: true,
+  role: true,
+  createdAt: true,
+  updatedAt: true,
+  user: { select: memberUserSelect },
+} satisfies Prisma.OrganisationMemberSelect;
+type MemberWithUser = Prisma.OrganisationMemberGetPayload<{
+  select: typeof memberSelect;
+}>;
+
 @Injectable()
 export class OrganisationsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly storageService: StorageService,
     private readonly organisationAccess: OrganisationAccessService,
+    private readonly queueService: QueueService,
+    private readonly configService: ConfigService,
     @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
   ) {}
 
@@ -143,6 +186,256 @@ export class OrganisationsService {
     return this.toOrganisationResponseDto(organisation);
   }
 
+  async listMembers(
+    organisationId: string,
+    query: PaginationQueryDto,
+    actorId: string,
+  ): Promise<PaginatedResult<OrganisationMemberResponseDto>> {
+    await this.organisationAccess.assertMembership(organisationId, actorId);
+
+    const { skip, take } = buildPrismaSkipTake(query);
+    const where: Prisma.OrganisationMemberWhereInput = { organisationId };
+
+    const [items, total] = await this.prisma.$transaction([
+      this.prisma.organisationMember.findMany({
+        where,
+        orderBy: [{ role: 'asc' }, { createdAt: 'asc' }],
+        select: memberSelect,
+        skip,
+        take,
+      }),
+      this.prisma.organisationMember.count({ where }),
+    ]);
+
+    const data = await Promise.all(
+      items.map((item) => this.toMemberResponseDto(item)),
+    );
+
+    return {
+      data,
+      meta: buildPaginationMeta(query, total),
+    };
+  }
+
+  async inviteMember(
+    organisationId: string,
+    dto: InviteMemberDto,
+    actorId: string,
+  ): Promise<OrganisationMemberResponseDto> {
+    await this.organisationAccess.assertOwnership(organisationId, actorId);
+
+    const organisation = await this.prisma.organisation.findUnique({
+      where: { id: organisationId },
+      select: { id: true, name: true },
+    });
+    if (!organisation) {
+      throw new NotFoundException('Organisation not found.');
+    }
+
+    const email = dto.email.trim().toLowerCase();
+    const role = dto.role ?? OrganisationRole.MEMBER;
+
+    const existingUser = await this.prisma.user.findUnique({
+      where: { email },
+      select: { id: true, name: true, surname: true },
+    });
+
+    let userId: string;
+    let isNewUser = false;
+    let temporaryPassword: string | null = null;
+    let inviteeFullName: string;
+
+    if (existingUser) {
+      const duplicateMembership =
+        await this.prisma.organisationMember.findUnique({
+          where: {
+            userId_organisationId: { userId: existingUser.id, organisationId },
+          },
+          select: { id: true },
+        });
+      if (duplicateMembership) {
+        throw new ConflictException('User is already a member.');
+      }
+
+      userId = existingUser.id;
+      inviteeFullName = `${existingUser.name} ${existingUser.surname}`.trim();
+    } else {
+      const name = dto.name?.trim();
+      const surname = dto.surname?.trim();
+      if (!name || !surname) {
+        throw new BadRequestException(
+          'Name and surname are required for new users.',
+        );
+      }
+      this.validateEmailDomain(email);
+
+      isNewUser = true;
+      temporaryPassword = generatePassword(16);
+      const hashedPassword = await hashPassword(temporaryPassword);
+      const temporaryPasswordExpiresAt = new Date(Date.now() + 30 * 60 * 1000);
+
+      const created = await this.prisma.user.create({
+        data: {
+          name,
+          surname,
+          email,
+          password: hashedPassword,
+          isActive: true,
+          mustChangePassword: true,
+          temporaryPasswordExpiresAt,
+        },
+        select: { id: true, name: true, surname: true },
+      });
+
+      userId = created.id;
+      inviteeFullName = `${created.name} ${created.surname}`.trim();
+    }
+
+    await this.prisma.organisationMember.create({
+      data: { userId, organisationId, role },
+    });
+
+    if (isNewUser && temporaryPassword) {
+      await this.queueService.addMailJob(MAIL_JOB_SEND, {
+        to: email,
+        subject: 'Your account has been created',
+        template: 'new-user-credentials',
+        context: {
+          name: inviteeFullName,
+          password: temporaryPassword,
+        },
+      });
+    }
+
+    await this.invalidateCache();
+
+    const member = await this.prisma.organisationMember.findUniqueOrThrow({
+      where: { userId_organisationId: { userId, organisationId } },
+      select: memberSelect,
+    });
+
+    return this.toMemberResponseDto(member);
+  }
+
+  async updateMemberRole(
+    organisationId: string,
+    targetUserId: string,
+    dto: UpdateMemberRoleDto,
+    actorId: string,
+  ): Promise<OrganisationMemberResponseDto> {
+    await this.organisationAccess.assertOwnership(organisationId, actorId);
+
+    const membership = await this.prisma.organisationMember.findUnique({
+      where: {
+        userId_organisationId: { userId: targetUserId, organisationId },
+      },
+      select: { role: true },
+    });
+    if (!membership) {
+      throw new NotFoundException('Member not found.');
+    }
+
+    if (membership.role === dto.role) {
+      const current = await this.prisma.organisationMember.findUniqueOrThrow({
+        where: {
+          userId_organisationId: { userId: targetUserId, organisationId },
+        },
+        select: memberSelect,
+      });
+      return this.toMemberResponseDto(current);
+    }
+
+    if (
+      membership.role === OrganisationRole.OWNER &&
+      dto.role === OrganisationRole.MEMBER
+    ) {
+      await this.assertNotLastOwner(
+        organisationId,
+        'Cannot demote the last owner.',
+      );
+    }
+
+    await this.prisma.organisationMember.update({
+      where: {
+        userId_organisationId: { userId: targetUserId, organisationId },
+      },
+      data: { role: dto.role },
+    });
+
+    await this.invalidateCache();
+
+    const updated = await this.prisma.organisationMember.findUniqueOrThrow({
+      where: {
+        userId_organisationId: { userId: targetUserId, organisationId },
+      },
+      select: memberSelect,
+    });
+
+    return this.toMemberResponseDto(updated);
+  }
+
+  async removeMember(
+    organisationId: string,
+    targetUserId: string,
+    actorId: string,
+  ): Promise<OrganisationMemberResponseDto> {
+    if (targetUserId !== actorId) {
+      await this.organisationAccess.assertOwnership(organisationId, actorId);
+    } else {
+      await this.organisationAccess.assertMembership(organisationId, actorId);
+    }
+
+    const membership = await this.prisma.organisationMember.findUnique({
+      where: {
+        userId_organisationId: { userId: targetUserId, organisationId },
+      },
+      select: { role: true },
+    });
+    if (!membership) {
+      throw new NotFoundException('Member not found.');
+    }
+
+    if (membership.role === OrganisationRole.OWNER) {
+      await this.assertNotLastOwner(
+        organisationId,
+        'Cannot remove the last owner.',
+      );
+    }
+
+    const removed = await this.prisma.organisationMember.delete({
+      where: {
+        userId_organisationId: { userId: targetUserId, organisationId },
+      },
+      select: memberSelect,
+    });
+
+    await this.invalidateCache();
+
+    return this.toMemberResponseDto(removed);
+  }
+
+  private async assertNotLastOwner(
+    organisationId: string,
+    message: string,
+  ): Promise<void> {
+    const ownerCount = await this.prisma.organisationMember.count({
+      where: { organisationId, role: OrganisationRole.OWNER },
+    });
+    if (ownerCount <= 1) {
+      throw new BadRequestException(message);
+    }
+  }
+
+  private validateEmailDomain(email: string): void {
+    const allowedDomains =
+      this.configService.get<string[]>('auth.allowedEmailDomains') ?? [];
+    const domain = email.split('@')[1]?.toLowerCase();
+
+    if (!domain || !allowedDomains.includes(domain)) {
+      throw new BadRequestException('Email domain is not allowed.');
+    }
+  }
+
   private async toOrganisationResponseDto(
     organisation: OrganisationPublic,
   ): Promise<OrganisationResponseDto> {
@@ -151,6 +444,27 @@ export class OrganisationsService {
     return {
       ...organisation,
       logoUrl,
+    };
+  }
+
+  private async toMemberResponseDto(
+    member: MemberWithUser,
+  ): Promise<OrganisationMemberResponseDto> {
+    const avatarUrl = await this.resolveAssetUrl(member.user.avatarUrl);
+    const { memberships, ...userRest } = member.user;
+
+    return {
+      id: member.id,
+      userId: member.userId,
+      organisationId: member.organisationId,
+      role: member.role,
+      createdAt: member.createdAt,
+      updatedAt: member.updatedAt,
+      user: {
+        ...userRest,
+        avatarUrl,
+        organisationIds: memberships.map((m) => m.organisationId),
+      },
     };
   }
 

@@ -11,9 +11,14 @@ import {
   Query,
   UseInterceptors,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiOkResponse,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
 import { PaginationQueryDto } from '../../common/dto';
-import { CurrentUser } from '../../common/decorators';
+import { ApiPaginatedResponse, CurrentUser } from '../../common/decorators';
 import { PaginatedResult } from '../../common/interfaces';
 import { OrganisationAccessService } from '../organisations/organisation-access.service';
 import { UpdateUserDto, UserResponseDto } from './dto';
@@ -30,19 +35,18 @@ export class UsersController {
   ) {}
 
   @ApiOperation({ operationId: 'UserGetList' })
+  @ApiPaginatedResponse(UserResponseDto)
   @Get()
   @CacheTTL(30000)
   findAll(
     @Query() query: PaginationQueryDto,
     @CurrentUser('sub') currentUserId: string,
   ): Promise<PaginatedResult<UserResponseDto>> {
-    return this.usersService.findAllInSharedOrganisations(
-      currentUserId,
-      query,
-    );
+    return this.usersService.findAllInSharedOrganisations(currentUserId, query);
   }
 
   @ApiOperation({ operationId: 'UserGet' })
+  @ApiOkResponse({ type: UserResponseDto })
   @Get(':id')
   @CacheTTL(60000)
   async findOne(
@@ -66,6 +70,7 @@ export class UsersController {
   }
 
   @ApiOperation({ operationId: 'UserUpdate' })
+  @ApiOkResponse({ type: UserResponseDto })
   @Patch(':id')
   update(
     @Param('id', ParseUUIDPipe) id: string,
@@ -82,6 +87,7 @@ export class UsersController {
   }
 
   @ApiOperation({ operationId: 'UserDelete' })
+  @ApiOkResponse({ type: UserResponseDto })
   @Delete(':id')
   remove(
     @Param('id', ParseUUIDPipe) id: string,
