@@ -1,5 +1,5 @@
 ---
-description: Mail module conventions for Handlebars templates and queued delivery
+description: Mail module conventions for Handlebars templates, shadcn-style styling, and queued delivery
 globs: src/modules/mail/**
 alwaysApply: false
 ---
@@ -11,6 +11,23 @@ alwaysApply: false
 - Plaats templates in `src/modules/mail/templates/*.hbs`.
 - Gebruik consistente context keys (`name`, `code`, `temporaryPassword`, etc.).
 - Gebruik als template id altijd de bestandsnaam zonder `.hbs`.
+
+## Styling regels
+
+Alle templates in `src/modules/mail/templates/*.hbs` MOETEN dezelfde shadcn-geinspireerde stijl volgen. Geen losse, ongestylede HTML. Match visueel met de bestaande templates (`activation-code`, `reset-password`, `password-changed`, `email-change-confirmation`, `email-change-notice`, `new-user-credentials`, `support-contact`, `welcome`).
+
+- Inline CSS only — geen Tailwind, geen externe stylesheets, geen helpers buiten plain Handlebars placeholders.
+- Body wrapper: `background-color: #f8fafc`, `padding: 24px 12px`, Inter font stack, `color: #0f172a`, `line-height: 1.6`.
+- Card via `<table role="presentation">` wrappers: `max-width: 560px`, witte achtergrond, `border: 1px solid #e2e8f0`, `border-radius: 12px`, `overflow: hidden`.
+- Header row: `padding: 28px 28px 12px 28px;` met kleine uppercase label (`font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: #64748b`) boven een `h1` van `font-size: 24px; font-weight: 700; color: #0f172a`.
+- Body copy: `font-size: 15px; color: #334155`, openend met een `Hi {{name}},` of `Hello {{name}},` begroeting.
+- Buttons: `background-color: #0f172a`, witte tekst, `border-radius: 8px`, `padding: 10px 16px` (of `12px 18px`), `font-weight: 600`.
+- Code/secret blocks: licht `#f8fafc` paneel met `#e2e8f0` (of dashed `#cbd5e1`) border, `border-radius: 10px`, monospace font (`ui-monospace, SFMono-Regular, Menlo, ...`), uppercase label boven de waarde.
+- Notice/alert blocks:
+  - warning → `#fff7ed` + `#fed7aa` + `#9a3412`;
+  - security alert → `#fff1f2` + `#fecdd3` + `#9f1239`.
+- Footer: muted `color: #64748b`, divider via `padding-top: 14px; border-top: 1px solid #e2e8f0`, eindigend met "This is an automated message. Please do not reply.".
+- Houd tekstcontrast hoog en gebruik tabellen als layout-wrapper voor brede e-mailclient ondersteuning.
 
 ## Delivery regels
 
