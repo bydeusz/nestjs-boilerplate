@@ -11,6 +11,7 @@ import { JwtService } from '@nestjs/jwt';
 import { createHmac, randomBytes, randomInt, randomUUID } from 'crypto';
 import ms, { StringValue } from 'ms';
 import {
+  assertEmailDomainAllowed,
   comparePassword,
   generatePassword,
   hashPassword,
@@ -440,11 +441,7 @@ export class AuthService {
   private validateEmailDomain(email: string): void {
     const allowedDomains =
       this.configService.get<string[]>('auth.allowedEmailDomains') ?? [];
-    const domain = email.split('@')[1]?.toLowerCase();
-
-    if (!domain || !allowedDomains.includes(domain)) {
-      throw new BadRequestException('Email domain is not allowed.');
-    }
+    assertEmailDomainAllowed(email, allowedDomains);
   }
 
   private buildRefreshTokenExpiryDate(): Date {
