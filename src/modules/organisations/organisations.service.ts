@@ -57,7 +57,6 @@ const memberUserSelect = {
   avatarUrl: true,
   createdAt: true,
   updatedAt: true,
-  memberships: { select: { organisationId: true } },
 } satisfies Prisma.UserSelect;
 
 const memberSelect = {
@@ -480,7 +479,6 @@ export class OrganisationsService {
     member: MemberWithUser,
   ): Promise<OrganisationMemberResponseDto> {
     const avatarUrl = await this.resolveAssetUrl(member.user.avatarUrl);
-    const { memberships, ...userRest } = member.user;
 
     return {
       id: member.id,
@@ -490,9 +488,8 @@ export class OrganisationsService {
       createdAt: member.createdAt,
       updatedAt: member.updatedAt,
       user: {
-        ...userRest,
+        ...member.user,
         avatarUrl,
-        organisationIds: memberships.map((m) => m.organisationId),
       },
     };
   }

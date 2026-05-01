@@ -1,4 +1,4 @@
-import { CacheInterceptor, CacheTTL } from '@nestjs/cache-manager';
+import { CacheTTL } from '@nestjs/cache-manager';
 import {
   Body,
   Controller,
@@ -21,6 +21,7 @@ import {
 import { PaginationQueryDto } from '../../common/dto';
 import { ApiPaginatedResponse, CurrentUser } from '../../common/decorators';
 import { PaginatedResult } from '../../common/interfaces';
+import { UserScopedCacheInterceptor } from '../../common/interceptors';
 import {
   CreateOrganisationDto,
   InviteMemberDto,
@@ -34,7 +35,7 @@ import { OrganisationsService } from './organisations.service';
 @Controller('organisations')
 @ApiTags('Organisations')
 @ApiBearerAuth()
-@UseInterceptors(CacheInterceptor)
+@UseInterceptors(UserScopedCacheInterceptor)
 export class OrganisationsController {
   constructor(private readonly organisationsService: OrganisationsService) {}
 
