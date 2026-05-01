@@ -324,7 +324,12 @@ export class AuthService {
     }
 
     const hashedPassword = await hashPassword(newPassword);
-    await this.usersService.updatePassword(user.id, hashedPassword, false, null);
+    await this.usersService.updatePassword(
+      user.id,
+      hashedPassword,
+      false,
+      null,
+    );
     await this.prisma.user.update({
       where: { id: user.id },
       data: { isActive: true },
@@ -385,11 +390,7 @@ export class AuthService {
     const confirmUrl = this.buildEmailChangeConfirmUrl(token);
     const fullName = `${user.name} ${user.surname}`.trim();
 
-    await this.sendEmailChangeConfirmationEmail(
-      newEmail,
-      fullName,
-      confirmUrl,
-    );
+    await this.sendEmailChangeConfirmationEmail(newEmail, fullName, confirmUrl);
     await this.sendEmailChangeNoticeEmail(user.email, fullName, newEmail);
 
     return {

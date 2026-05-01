@@ -6,41 +6,41 @@ alwaysApply: false
 
 # Mail templates and delivery
 
-## Template regels
+## Template rules
 
-- Plaats templates in `src/modules/mail/templates/*.hbs`.
-- Gebruik consistente context keys (`name`, `code`, `temporaryPassword`, etc.).
-- Gebruik als template id altijd de bestandsnaam zonder `.hbs`.
+- Place templates in `src/modules/mail/templates/*.hbs`.
+- Use consistent context keys (`name`, `code`, `temporaryPassword`, etc.).
+- Always use the filename without `.hbs` as the template id.
 
-## Styling regels
+## Styling rules
 
-Alle templates in `src/modules/mail/templates/*.hbs` MOETEN dezelfde shadcn-geinspireerde stijl volgen. Geen losse, ongestylede HTML. Match visueel met de bestaande templates (`activation-code`, `reset-password`, `password-changed`, `email-change-confirmation`, `email-change-notice`, `new-user-credentials`, `support-contact`, `welcome`).
+All templates in `src/modules/mail/templates/*.hbs` MUST follow the same shadcn-inspired style. No loose, unstyled HTML. Match visually with the existing templates (`activation-code`, `reset-password`, `password-changed`, `email-change-confirmation`, `email-change-notice`, `new-user-credentials`, `support-contact`, `welcome`).
 
-- Inline CSS only — geen Tailwind, geen externe stylesheets, geen helpers buiten plain Handlebars placeholders.
+- Inline CSS only — no Tailwind, no external stylesheets, no helpers beyond plain Handlebars placeholders.
 - Body wrapper: `background-color: #f8fafc`, `padding: 24px 12px`, Inter font stack, `color: #0f172a`, `line-height: 1.6`.
-- Card via `<table role="presentation">` wrappers: `max-width: 560px`, witte achtergrond, `border: 1px solid #e2e8f0`, `border-radius: 12px`, `overflow: hidden`.
-- Header row: `padding: 28px 28px 12px 28px;` met kleine uppercase label (`font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: #64748b`) boven een `h1` van `font-size: 24px; font-weight: 700; color: #0f172a`.
-- Body copy: `font-size: 15px; color: #334155`, openend met een `Hi {{name}},` of `Hello {{name}},` begroeting.
-- Buttons: `background-color: #0f172a`, witte tekst, `border-radius: 8px`, `padding: 10px 16px` (of `12px 18px`), `font-weight: 600`.
-- Code/secret blocks: licht `#f8fafc` paneel met `#e2e8f0` (of dashed `#cbd5e1`) border, `border-radius: 10px`, monospace font (`ui-monospace, SFMono-Regular, Menlo, ...`), uppercase label boven de waarde.
+- Card via `<table role="presentation">` wrappers: `max-width: 560px`, white background, `border: 1px solid #e2e8f0`, `border-radius: 12px`, `overflow: hidden`.
+- Header row: `padding: 28px 28px 12px 28px;` with a small uppercase label (`font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: #64748b`) above an `h1` of `font-size: 24px; font-weight: 700; color: #0f172a`.
+- Body copy: `font-size: 15px; color: #334155`, opening with a `Hi {{name}},` or `Hello {{name}},` greeting.
+- Buttons: `background-color: #0f172a`, white text, `border-radius: 8px`, `padding: 10px 16px` (or `12px 18px`), `font-weight: 600`.
+- Code/secret blocks: light `#f8fafc` panel with `#e2e8f0` (or dashed `#cbd5e1`) border, `border-radius: 10px`, monospace font (`ui-monospace, SFMono-Regular, Menlo, ...`), uppercase label above the value.
 - Notice/alert blocks:
   - warning → `#fff7ed` + `#fed7aa` + `#9a3412`;
   - security alert → `#fff1f2` + `#fecdd3` + `#9f1239`.
-- Footer: muted `color: #64748b`, divider via `padding-top: 14px; border-top: 1px solid #e2e8f0`, eindigend met "This is an automated message. Please do not reply.".
-- Houd tekstcontrast hoog en gebruik tabellen als layout-wrapper voor brede e-mailclient ondersteuning.
+- Footer: muted `color: #64748b`, divider via `padding-top: 14px; border-top: 1px solid #e2e8f0`, ending with "This is an automated message. Please do not reply.".
+- Keep text contrast high and use tables as layout wrappers for broad email-client support.
 
-## Delivery regels
+## Delivery rules
 
-- Verstuur mail via queue, niet direct vanuit feature services.
-- Gebruik `QueueService.addMailJob(MAIL_JOB_SEND, payload)` als standaard.
-- Payload bevat minimaal: `to`, `subject`, `template`, `context`.
+- Send mail via the queue, not directly from feature services.
+- Use `QueueService.addMailJob(MAIL_JOB_SEND, payload)` as the standard.
+- The payload contains at minimum: `to`, `subject`, `template`, `context`.
 
-## Rendering regels
+## Rendering rules
 
-- Houd rendering centraal in `MailService`.
-- Gebruik `MailService.renderTemplate()` als enige plek voor compile logic.
-- Houd template business logic minimaal; beperk tot simpele placeholders.
+- Keep rendering centralised in `MailService`.
+- Use `MailService.renderTemplate()` as the only place for compile logic.
+- Keep template business logic minimal; limit it to simple placeholders.
 
-## Build regels
+## Build rules
 
-- Nieuwe `.hbs` templates hoeven niet extra geconfigureerd te worden zolang ze in `src/**` staan (asset copy staat al in `nest-cli.json`).
+- New `.hbs` templates do not need additional configuration as long as they live under `src/**` (asset copy is already configured in `nest-cli.json`).

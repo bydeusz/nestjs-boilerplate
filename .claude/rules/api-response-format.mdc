@@ -8,20 +8,20 @@ alwaysApply: false
 
 ## Success envelope
 
-- Laat `TransformInterceptor` responses wrappen als:
+- Let `TransformInterceptor` wrap responses as:
   `{ success, statusCode, data, meta, requestId, timestamp, path }`.
-- Services met paginatie retourneren `{ data, meta }`; interceptor behoudt `meta`.
-- Gebruik `@SkipTransform()` alleen voor endpoints die een eigen shape vereisen.
+- Services with pagination return `{ data, meta }`; the interceptor preserves `meta`.
+- Use `@SkipTransform()` only for endpoints that require their own shape.
 
 ## Error envelope
 
-- Alle errors lopen via `AllExceptionsFilter`.
-- Error shape blijft:
+- All errors flow through `AllExceptionsFilter`.
+- Error shape stays:
   `{ success: false, statusCode, message, error, requestId, timestamp, path }`.
-- Gebruik Nest exceptions (`BadRequestException`, `ForbiddenException`, etc.) in domain code.
+- Use Nest exceptions (`BadRequestException`, `ForbiddenException`, etc.) in domain code.
 
 ## Prisma errors
 
-- Behoud Prisma-to-HTTP mapping in de exception filter.
-- Voeg nieuwe Prisma error codes alleen centraal toe in `AllExceptionsFilter`.
-- Vermijd ad-hoc Prisma error mapping in controllers/services.
+- Keep Prisma-to-HTTP mapping in the exception filter.
+- Add new Prisma error codes only centrally in `AllExceptionsFilter`.
+- Avoid ad-hoc Prisma error mapping in controllers/services.

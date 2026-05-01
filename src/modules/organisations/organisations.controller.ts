@@ -49,7 +49,7 @@ export class OrganisationsController {
     return this.organisationsService.create(createOrganisationDto, userId);
   }
 
-  @ApiOperation({ operationId: 'OrganisationGetList' })
+  @ApiOperation({ operationId: 'OrganisationList' })
   @ApiPaginatedResponse(OrganisationResponseDto)
   @Get()
   @CacheTTL(30000)
@@ -92,7 +92,7 @@ export class OrganisationsController {
     return this.organisationsService.remove(id, userId);
   }
 
-  @ApiOperation({ operationId: 'OrganisationMemberGetList' })
+  @ApiOperation({ operationId: 'OrganisationMemberList' })
   @ApiPaginatedResponse(OrganisationMemberResponseDto)
   @Get(':id/members')
   @CacheTTL(30000)

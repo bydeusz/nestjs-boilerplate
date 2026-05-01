@@ -8,24 +8,24 @@ alwaysApply: false
 
 ## Mocking pattern
 
-- Gebruik `jest.mock()` voor zware dependencies (bijv. PrismaService).
-- Maak dependency stubs als plain objects met `jest.fn()`.
-- Voor service unit tests: instantieer direct met `new Service(...)`.
-- Gebruik `as never` alleen bij constructor wiring in tests.
+- Use `jest.mock()` for heavy dependencies (e.g. PrismaService).
+- Build dependency stubs as plain objects with `jest.fn()`.
+- For service unit tests: instantiate directly with `new Service(...)`.
+- Use `as never` only for constructor wiring in tests.
 
-## Test structuur
+## Test structure
 
-- Gebruik `beforeEach(() => jest.clearAllMocks())`.
-- Test 1 gedrag per test-case met duidelijke namen.
-- Gebruik `expect(...).resolves` en `expect(...).rejects` voor async flows.
-- Controleer side effects expliciet met `toHaveBeenCalledWith`.
+- Use `beforeEach(() => jest.clearAllMocks())`.
+- Test one behaviour per test case with clear names.
+- Use `expect(...).resolves` and `expect(...).rejects` for async flows.
+- Verify side effects explicitly with `toHaveBeenCalledWith`.
 
 ## Typed mock calls
 
-- Type cast mock calls bij complexe argument assertions:
+- Type-cast mock calls for complex argument assertions:
   `const calls = mock.calls as Array<[Arg1, Arg2]>;`
 
 ## Scope
 
-- Unit tests testen business logic en contracten, niet framework wiring.
-- E2E tests blijven in `test/*.e2e-spec.ts` met `supertest`.
+- Unit tests cover business logic and contracts, not framework wiring.
+- E2E tests live in `test/*.e2e-spec.ts` with `supertest`.

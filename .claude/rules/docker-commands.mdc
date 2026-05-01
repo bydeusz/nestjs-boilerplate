@@ -8,20 +8,20 @@ alwaysApply: false
 
 ## Compose scopes
 
-- Development compose runt alleen infra (Postgres, Redis, MinIO, Mailpit).
-- Production compose runt infra plus `migrate`, `api` en `worker`.
-- API en worker blijven gescheiden processen.
+- The development compose runs only infrastructure (Postgres, Redis, MinIO, Mailpit).
+- The production compose runs infrastructure plus `migrate`, `api`, and `worker`.
+- API and worker remain separate processes.
 
-## Commando's
+## Commands
 
-- Start dev infra met `npm run docker:up`.
-- Stop infra met `npm run docker:down`.
-- Reset volumes met `npm run docker:reset`.
-- Build prod images met `npm run docker:prod:build`.
-- Start/stop prod stack met `npm run docker:prod:up` en `npm run docker:prod:down`.
+- Start dev infrastructure with `npm run docker:up`.
+- Stop infrastructure with `npm run docker:down`.
+- Reset volumes with `npm run docker:reset`.
+- Build prod images with `npm run docker:prod:build`.
+- Start/stop the prod stack with `npm run docker:prod:up` and `npm run docker:prod:down`.
 
-## Build en runtime
+## Build and runtime
 
-- Houd Dockerfile multi-stage (deps, build, migrate, prod-deps, production).
-- Voer migraties in prod via dedicated `migrate` service uit voordat API start.
-- Behoud healthchecks voor database, redis, storage en API.
+- Keep the Dockerfile multi-stage (deps, build, migrate, prod-deps, production).
+- Run migrations in prod via the dedicated `migrate` service before the API starts.
+- Keep healthchecks for database, redis, storage, and API.

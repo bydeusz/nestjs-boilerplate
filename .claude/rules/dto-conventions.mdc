@@ -8,24 +8,24 @@ alwaysApply: false
 
 ## Type splits
 
-- Gebruik request DTOs voor input: `Create*Dto`, `Update*Dto`, `*QueryDto`, `*ParamsDto`.
-- Gebruik response DTOs voor output: `*ResponseDto`.
-- Response DTOs extenden `BaseEntityDto` waar relevant.
+- Use request DTOs for input: `Create*Dto`, `Update*Dto`, `*QueryDto`, `*ParamsDto`.
+- Use response DTOs for output: `*ResponseDto`.
+- Response DTOs extend `BaseEntityDto` where relevant.
 
-## Request DTO regels
+## Request DTO rules
 
-- Valideer met `class-validator` decorators.
-- Gebruik `@ApiProperty()` of `@ApiPropertyOptional()` voor Swagger.
-- Gebruik `@Type(() => Number)` voor numerieke query velden.
-- Gebruik `@Transform()` alleen als type-conversie niet met `@Type` kan.
+- Validate with `class-validator` decorators.
+- Use `@ApiProperty()` or `@ApiPropertyOptional()` for Swagger.
+- Use `@Type(() => Number)` for numeric query fields.
+- Use `@Transform()` only when type conversion cannot be done with `@Type`.
 
-## Response DTO regels
+## Response DTO rules
 
-- Geen `class-validator` decorators.
-- Definieer velden met definite assignment (`field!: type`).
-- Houd response DTOs stabiel en los van Prisma model internals.
+- No `class-validator` decorators.
+- Define fields with definite assignment (`field!: type`).
+- Keep response DTOs stable and decoupled from Prisma model internals.
 
-## Structuur
+## Structure
 
-- Plaats DTOs in `dto/` per module.
-- Voeg altijd `dto/index.ts` toe voor barrel exports.
+- Place DTOs in `dto/` per module.
+- Always add `dto/index.ts` for barrel exports.

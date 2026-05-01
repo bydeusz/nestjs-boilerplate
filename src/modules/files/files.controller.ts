@@ -72,7 +72,9 @@ export class FilesController {
     @CurrentUser('sub') userId: string,
     @UploadedFile(
       new ParseFilePipe({
-        validators: [new MaxFileSizeValidator({ maxSize: MAX_UPLOAD_SIZE_BYTES })],
+        validators: [
+          new MaxFileSizeValidator({ maxSize: MAX_UPLOAD_SIZE_BYTES }),
+        ],
       }),
     )
     file: Express.Multer.File,
@@ -112,7 +114,9 @@ export class FilesController {
     @CurrentUser('sub') userId: string,
     @UploadedFile(
       new ParseFilePipe({
-        validators: [new MaxFileSizeValidator({ maxSize: MAX_UPLOAD_SIZE_BYTES })],
+        validators: [
+          new MaxFileSizeValidator({ maxSize: MAX_UPLOAD_SIZE_BYTES }),
+        ],
       }),
     )
     file: Express.Multer.File,
@@ -131,7 +135,7 @@ export class FilesController {
     );
   }
 
-  @ApiOperation({ operationId: 'FileGetList' })
+  @ApiOperation({ operationId: 'FileList' })
   @Get()
   findAll(
     @CurrentUser('sub') currentUserId: string,

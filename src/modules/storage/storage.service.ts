@@ -29,12 +29,10 @@ export class StorageService implements OnModuleInit, OnModuleDestroy {
       'http://localhost:9000',
     );
 
-    const accessKey = this.configService.getOrThrow<string>(
-      'storage.accessKey',
-    );
-    const secretKey = this.configService.getOrThrow<string>(
-      'storage.secretKey',
-    );
+    const accessKey =
+      this.configService.getOrThrow<string>('storage.accessKey');
+    const secretKey =
+      this.configService.getOrThrow<string>('storage.secretKey');
     this.bucket = this.configService.get<string>('storage.bucket', 'uploads');
 
     this.s3Client = new S3Client({

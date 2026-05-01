@@ -142,7 +142,7 @@ export class AuthController {
     );
   }
 
-  @ApiOperation({ operationId: 'AuthMeGet' })
+  @ApiOperation({ operationId: 'AuthGetCurrentUser' })
   @Get('me')
   @HttpCode(HttpStatus.OK)
   me(@CurrentUser('sub') userId: string): Promise<UserResponseDto> {

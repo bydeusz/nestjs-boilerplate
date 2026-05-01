@@ -6,26 +6,26 @@ alwaysApply: false
 
 # Prisma schema per module
 
-Gebruik in dit project een modulaire Prisma schema-structuur:
+This project uses a modular Prisma schema structure:
 
-- Hoofdbestand is `schema.prisma` op project-root en bevat alleen `generator` en `datasource`.
-- Modelleer per module in `src/modules/<module>/<module>.prisma`.
-- Plaats enums in hetzelfde modulebestand als waar ze primair gebruikt worden.
+- The main file is `schema.prisma` at the project root and contains only `generator` and `datasource`.
+- Model per module in `src/modules/<module>/<module>.prisma`.
+- Place enums in the same module file where they are primarily used.
 
-## Nieuw model toevoegen
+## Adding a new model
 
-1. Kies de juiste modulemap: `src/modules/<module>/`.
-2. Voeg het model toe aan `src/modules/<module>/<module>.prisma`.
-3. Voeg relaties naar andere modellen toe met normale Prisma-relaties (cross-file is toegestaan).
-4. Pas alleen `schema.prisma` aan als `generator`/`datasource` echt moet wijzigen.
-5. Draai na wijzigingen:
+1. Pick the right module folder: `src/modules/<module>/`.
+2. Add the model to `src/modules/<module>/<module>.prisma`.
+3. Add relations to other models using regular Prisma relations (cross-file is allowed).
+4. Only edit `schema.prisma` if `generator`/`datasource` actually needs to change.
+5. After changes, run:
    - `npx prisma validate`
    - `npx prisma generate`
-   - daarna pas `npx prisma migrate dev` (indien schemawijziging)
+   - then `npx prisma migrate dev` (if there is a schema change)
 
-## Conventies
+## Conventions
 
-- Houd modelnamen enkelvoudig in PascalCase (`User`, `Organisation`).
-- Houd velden in camelCase.
-- Voeg waar nodig indexes en `onDelete`-gedrag expliciet toe.
-- Voorkom nieuwe modellen in het hoofdbestand `schema.prisma`.
+- Keep model names singular in PascalCase (`User`, `Organisation`).
+- Keep field names in camelCase.
+- Add indexes and explicit `onDelete` behaviour where needed.
+- Avoid adding new models in the main `schema.prisma` file.

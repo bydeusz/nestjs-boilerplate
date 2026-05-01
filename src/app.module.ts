@@ -15,7 +15,6 @@ import { AllExceptionsFilter } from './common/filters';
 import { LoggerModule } from './common/logger';
 import configuration from './config/configuration';
 import { validate } from './config/env.validation';
-import { AppFeatureModule } from './modules/app/app.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { FilesModule } from './modules/files';
 import { HealthModule } from './modules/health';
@@ -77,7 +76,6 @@ import { PrismaModule } from './prisma/prisma.module';
     StorageModule,
     RedisModule,
     QueueModule.register('producer'),
-    AppFeatureModule,
     AuthModule,
     FilesModule,
     HealthModule,

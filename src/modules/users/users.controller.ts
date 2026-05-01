@@ -35,7 +35,7 @@ export class UsersController {
     private readonly organisationAccess: OrganisationAccessService,
   ) {}
 
-  @ApiOperation({ operationId: 'UserGetList' })
+  @ApiOperation({ operationId: 'UserList' })
   @ApiPaginatedResponse(UserResponseDto)
   @Get()
   @CacheTTL(30000)

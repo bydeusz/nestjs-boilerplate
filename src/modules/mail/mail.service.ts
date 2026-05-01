@@ -8,7 +8,10 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Handlebars from 'handlebars';
-import nodemailer, { type SendMailOptions as NodemailerSendMailOptions, type Transporter } from 'nodemailer';
+import nodemailer, {
+  type SendMailOptions as NodemailerSendMailOptions,
+  type Transporter,
+} from 'nodemailer';
 import type {
   MailAttachment,
   SendMailOptions,

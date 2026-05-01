@@ -6,23 +6,23 @@ alwaysApply: false
 
 # Environment configuration
 
-## Bronnen
+## Sources
 
-- Definieer config mapping in `src/config/configuration.ts`.
-- Valideer env vars in `src/config/env.validation.ts`.
-- Houd defaults en type-conversies centraal in deze configlaag.
+- Define the config mapping in `src/config/configuration.ts`.
+- Validate env vars in `src/config/env.validation.ts`.
+- Keep defaults and type conversions centralised in this config layer.
 
-## Nieuwe env variabele
+## Adding a new env variable
 
-Bij toevoegen van een variabele:
+When adding a variable:
 
-1. Voeg toe aan `.env.example`.
-2. Voeg validatie toe in `env.validation.ts`.
-3. Map de variabele in `configuration.ts`.
-4. Gebruik de variabele via `ConfigService` in modules/services.
+1. Add it to `.env.example`.
+2. Add validation in `env.validation.ts`.
+3. Map the variable in `configuration.ts`.
+4. Use the variable through `ConfigService` in modules/services.
 
-## Gebruik
+## Usage
 
-- Gebruik `configService.get('nested.key')` of `getOrThrow()`.
-- Vermijd directe `process.env` reads in feature code.
-- Group keys logisch (`app`, `jwt`, `database`, `redis`, `smtp`, `storage`).
+- Use `configService.get('nested.key')` or `getOrThrow()`.
+- Avoid direct `process.env` reads in feature code.
+- Group keys logically (`app`, `jwt`, `database`, `redis`, `smtp`, `storage`).

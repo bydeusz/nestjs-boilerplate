@@ -120,7 +120,10 @@ export class FilesService {
     };
   }
 
-  async findOne(fileId: string, currentUserId: string): Promise<FileResponseDto> {
+  async findOne(
+    fileId: string,
+    currentUserId: string,
+  ): Promise<FileResponseDto> {
     const file = await this.prisma.file.findUnique({
       where: { id: fileId },
     });
@@ -134,10 +137,7 @@ export class FilesService {
     return this.toResponseDto(file);
   }
 
-  async deleteFile(
-    fileId: string,
-    userId: string,
-  ): Promise<FileResponseDto> {
+  async deleteFile(fileId: string, userId: string): Promise<FileResponseDto> {
     const file = await this.prisma.file.findUnique({
       where: { id: fileId },
     });

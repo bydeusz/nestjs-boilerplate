@@ -7,78 +7,78 @@ description: Creates or refactors Handlebars email templates in a consistent sha
 
 ## When to use
 
-Gebruik deze skill wanneer je:
+Use this skill when you:
 
-- een nieuwe mail template maakt in `src/modules/mail/templates/*.hbs`;
-- een bestaande mail template restylet;
-- consistente, moderne styling wilt in shadcn-sfeer.
+- create a new mail template in `src/modules/mail/templates/*.hbs`;
+- restyle an existing mail template;
+- want consistent, modern styling in a shadcn vibe.
 
 ## Non-negotiables
 
-- Gebruik alleen e-mailveilige HTML + inline CSS.
-- Gebruik geen Tailwind classes of externe stylesheet.
-- Houd bestaande Handlebars placeholders intact (`{{name}}`, `{{code}}`, `{{temporaryPassword}}`, `{{password}}`, etc.).
-- Houd template logic minimaal; alleen simpele placeholders.
+- Use only email-safe HTML + inline CSS.
+- Do not use Tailwind classes or any external stylesheet.
+- Keep existing Handlebars placeholders intact (`{{name}}`, `{{code}}`, `{{temporaryPassword}}`, `{{password}}`, etc.).
+- Keep template logic minimal; only simple placeholders.
 
 ## Design baseline
 
-Gebruik dit als standaard visual language:
+Use this as the standard visual language:
 
-- Achtergrond: lichte, neutrale tint (bijv. `#f8fafc`).
-- Gecentreerde card container met `max-width` rond `560px`.
-- Witte card met subtiele border (`#e2e8f0`) en radius (`10-12px`).
-- Duidelijke hiërarchie:
-  - kleine uppercase label;
-  - krachtige heading;
-  - rustige body copy (`14-15px`).
-- Consistente verticale spacing en footer met divider.
+- Background: light, neutral tint (e.g. `#f8fafc`).
+- Centred card container with `max-width` around `560px`.
+- White card with a subtle border (`#e2e8f0`) and radius (`10-12px`).
+- Clear hierarchy:
+  - small uppercase label;
+  - strong heading;
+  - calm body copy (`14-15px`).
+- Consistent vertical spacing and a footer with a divider.
 
 ## Component patterns
 
-Pas deze patronen toe op basis van inhoud:
+Apply these patterns based on content:
 
 1. **Code block (activation)**
-   - Monospace font, hogere letter spacing, center aligned.
-   - Licht vlak met border/dashed border.
+   - Monospace font, increased letter spacing, center aligned.
+   - Light panel with a border or dashed border.
 
 2. **Sensitive secret block (temporary password)**
-   - Aparte panel met titel + monospace secret value.
-   - Voeg warning/notice toe dat gebruiker direct moet wijzigen.
+   - Separate panel with title + monospace secret value.
+   - Add a warning/notice that the user must change it immediately.
 
 3. **Security alert block**
-   - Contrasterende waarschuwingstint (bijv. soft red/orange).
-   - Korte, duidelijke call-out voor verdachte acties.
+   - Contrasting warning tint (e.g. soft red/orange).
+   - Short, clear call-out for suspicious actions.
 
 4. **Welcome/neutral content**
-   - Geen hard alert, wel consistente hero + body + footer.
+   - No hard alert, but consistent hero + body + footer.
 
 ## Accessibility and compatibility
 
-- Houd tekstcontrast hoog genoeg.
-- Gebruik tabellen als layout-wrapper voor brede e-mailclient ondersteuning.
-- Vermijd moderne CSS features met slechte e-mailclient support.
-- Houd breedte mobielvriendelijk met volledige breedte en max-width card.
+- Keep text contrast high enough.
+- Use tables as the layout wrapper for broad email-client support.
+- Avoid modern CSS features with poor email-client support.
+- Keep the width mobile-friendly with full width and a max-width card.
 
 ## Workflow checklist
 
-Gebruik en update deze checklist tijdens wijzigingen:
+Use and update this checklist while making changes:
 
-- [ ] Template staat in `src/modules/mail/templates/*.hbs`.
+- [ ] Template lives in `src/modules/mail/templates/*.hbs`.
 - [ ] Inline CSS only.
-- [ ] Shadcn-geinspireerde card/layout toegepast.
-- [ ] Correcte component pattern gebruikt (code/secret/alert/welcome).
-- [ ] Placeholders en context keys intact gebleven.
-- [ ] Footer/divider toegevoegd.
-- [ ] Template compileert als Handlebars zonder extra helpers.
+- [ ] Shadcn-inspired card/layout applied.
+- [ ] Correct component pattern used (code/secret/alert/welcome).
+- [ ] Placeholders and context keys preserved.
+- [ ] Footer/divider added.
+- [ ] Template compiles as Handlebars without extra helpers.
 
 ## Validation
 
-Na wijzigingen:
+After changes:
 
-1. Compileer templates met Handlebars en een sample context.
-2. Check diagnostics/lints op aangepaste bestanden.
-3. Wijzig geen `MailService` rendering flow, tenzij expliciet gevraagd.
+1. Compile templates with Handlebars and a sample context.
+2. Check diagnostics/lints on the modified files.
+3. Do not change the `MailService` rendering flow unless explicitly requested.
 
 ## Related project conventions
 
-- `.cursor/rules/mail-templates.mdc`
+- `.claude/rules/mail-templates.mdc`

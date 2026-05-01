@@ -4,50 +4,50 @@ globs: src/modules/queue/**
 alwaysApply: false
 ---
 
-# Queue/Worker Architectuur
+# Queue/Worker architecture
 
-## Overzicht
+## Overview
 
-Dit project draait twee aparte NestJS processen vanuit dezelfde codebase:
+This project runs two separate NestJS processes from the same codebase:
 
-| Process | Entry point | Root module | Rol |
-|---------|-------------|-------------|-----|
-| **API** | `src/main.ts` | `AppModule` | HTTP server, plaatst jobs op de queue |
-| **Worker** | `src/main-worker.ts` | `WorkerModule` | Verwerkt jobs van de queue |
+| Process | Entry point | Root module | Role |
+|---------|-------------|-------------|------|
+| **API** | `src/main.ts` | `AppModule` | HTTP server, enqueues jobs |
+| **Worker** | `src/main-worker.ts` | `WorkerModule` | Processes jobs from the queue |
 
-Beide processen verbinden met dezelfde Redis instance. Redis fungeert als message broker via BullMQ.
+Both processes connect to the same Redis instance. Redis acts as the message broker via BullMQ.
 
 ## Flow
 
-1. Een service in de API roept `QueueService.addMailJob(name, data)` aan.
-2. BullMQ serialiseert de job en plaatst deze in de `mail` queue in Redis.
-3. De Worker pikt de job op via `MailProcessor` (`@Processor(MAIL_QUEUE)`).
-4. De processor dispatcht op `job.name` via een `switch` statement.
+1. A service in the API calls `QueueService.addMailJob(name, data)`.
+2. BullMQ serialises the job and places it on the `mail` queue in Redis.
+3. The Worker picks up the job via `MailProcessor` (`@Processor(MAIL_QUEUE)`).
+4. The processor dispatches on `job.name` via a `switch` statement.
 
-## QueueModule mode-systeem
+## QueueModule mode system
 
-`QueueModule.register(mode)` in `src/modules/queue/queue.module.ts` regelt de scheiding:
+`QueueModule.register(mode)` in `src/modules/queue/queue.module.ts` controls the separation:
 
 | Mode | QueueService (producer) | Processors (consumers) |
 |------|:-----------------------:|:----------------------:|
-| `producer` | Ja | Nee |
-| `worker` | Ja | Ja |
-| `both` | Ja | Ja |
+| `producer` | Yes | No |
+| `worker` | Yes | Yes |
+| `both` | Yes | Yes |
 
-- `AppModule` gebruikt `QueueModule.register('producer')`.
-- `WorkerModule` gebruikt `QueueModule.register('worker')`.
+- `AppModule` uses `QueueModule.register('producer')`.
+- `WorkerModule` uses `QueueModule.register('worker')`.
 
-## Conventies
+## Conventions
 
-- **Mode system**: Registreer processors NOOIT in `'producer'` mode. De `if (mode !== 'producer')` guard in `queue.module.ts` moet alle processor-registraties wrappen.
-- **Constants**: Definieer alle queue- en job-namen in `src/modules/queue/constants/queue.constants.ts`. Nooit hardcoden.
-- **Processors**: Altijd `WorkerHost` extenden en `switch(job.name)` gebruiken (BullMQ patroon). Plaats bestanden in `src/modules/queue/processors/`.
-- **Producer methods**: Voeg enqueue-methodes toe aan `QueueService` (`src/modules/queue/queue.service.ts`). Zet altijd `attempts`, `backoff` en `removeOnComplete` defaults.
+- **Mode system**: NEVER register processors in `'producer'` mode. The `if (mode !== 'producer')` guard in `queue.module.ts` must wrap all processor registrations.
+- **Constants**: Define all queue and job names in `src/modules/queue/constants/queue.constants.ts`. Never hardcode them.
+- **Processors**: Always extend `WorkerHost` and use `switch(job.name)` (the BullMQ pattern). Place files in `src/modules/queue/processors/`.
+- **Producer methods**: Add enqueue methods to `QueueService` (`src/modules/queue/queue.service.ts`). Always set `attempts`, `backoff`, and `removeOnComplete` defaults.
 
-## Nieuwe queue job toevoegen
+## Adding a new queue job
 
-1. Voeg constanten toe in `src/modules/queue/constants/queue.constants.ts`
-2. Als nieuwe queue: voeg `BullModule.registerQueue({ name: QUEUE_NAME })` toe in `QueueModule`
-3. Voeg een producer-methode toe aan `QueueService`
-4. Maak een processor in `src/modules/queue/processors/` die `WorkerHost` extend
-5. Registreer de processor in `QueueModule` providers achter de `mode !== 'producer'` check
+1. Add constants in `src/modules/queue/constants/queue.constants.ts`.
+2. If it is a new queue: add `BullModule.registerQueue({ name: QUEUE_NAME })` in `QueueModule`.
+3. Add a producer method to `QueueService`.
+4. Create a processor in `src/modules/queue/processors/` that extends `WorkerHost`.
+5. Register the processor in `QueueModule` providers behind the `mode !== 'producer'` check.

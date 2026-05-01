@@ -6,25 +6,25 @@ alwaysApply: false
 
 # Prisma seeding conventions
 
-## Structuur
+## Structure
 
-- Houd `prisma/seed.ts` als centrale orchestrator.
-- Plaats domeinseeders in `prisma/seeders/*.seeder.ts`.
-- Exporteer per bestand een duidelijke functie: `seedUsers`, `seedOrganisations`, etc.
+- Keep `prisma/seed.ts` as the central orchestrator.
+- Place domain seeders in `prisma/seeders/*.seeder.ts`.
+- Export a clearly named function per file: `seedUsers`, `seedOrganisations`, etc.
 
-## Idempotentie
+## Idempotency
 
-- Gebruik `upsert` waar mogelijk zodat seeders herhaalbaar zijn.
-- Gebruik stabiele unieke sleutels (`email`, `name`, etc.) in `where` clauses.
-- Laat seeders IDs of refs teruggeven voor downstream seeders.
+- Use `upsert` where possible so seeders are repeatable.
+- Use stable unique keys (`email`, `name`, etc.) in `where` clauses.
+- Have seeders return ids or refs for downstream seeders.
 
-## Integratie
+## Integration
 
-- Gebruik dezelfde Prisma client setup als app runtime (adapter + datasource).
-- Gebruik bestaande utils zoals `hashPassword()` voor credentials.
-- Houd seeding volgorde expliciet in `seed.ts`.
+- Use the same Prisma client setup as the app runtime (adapter + datasource).
+- Use existing utilities like `hashPassword()` for credentials.
+- Keep the seeding order explicit in `seed.ts`.
 
-## Uitvoering
+## Execution
 
-- Draai seeden via `npm run prisma:seed`.
-- Zorg dat `prisma generate` vooraf draait (script doet dit al).
+- Run seeding via `npm run prisma:seed`.
+- Make sure `prisma generate` runs first (the script already does this).

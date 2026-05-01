@@ -8,29 +8,60 @@ alwaysApply: false
 
 ## Class-level defaults
 
-- Gebruik `@Controller('resource')`, `@ApiTags('Resource')`, `@ApiBearerAuth()`.
-- Gebruik class-level `@Roles(...)` alleen als dit de baseline voor alle routes is.
-- Gebruik `@UseInterceptors(CacheInterceptor)` op read-heavy controllers.
+- Use `@Controller('resource')`, `@ApiTags('Resource')`, `@ApiBearerAuth()`.
+- Use class-level `@Roles(...)` only if it is the baseline for all routes.
+- Use `@UseInterceptors(CacheInterceptor)` on read-heavy controllers.
 
-## Method-level regels
+## Method-level rules
 
-- Gebruik `@Roles(Role.Admin, Role.User)` voor route-specifieke toegang.
-- Gebruik `@Public()` voor routes zonder JWT.
-- Gebruik `@CacheTTL(ms)` op GET routes met cache.
-- Gebruik `@Param('id', ParseUUIDPipe)` voor UUID path parameters.
-- Gebruik `@CurrentUser('sub')` en `@CurrentUser('isAdmin')` voor context.
-- Gebruik `@ApiOperation({ operationId: '...' })` op elke HTTP-route (`@Get`, `@Post`, `@Put`, `@Patch`, `@Delete`).
+- Use `@Roles(Role.Admin, Role.User)` for route-specific access.
+- Use `@Public()` for routes without JWT.
+- Use `@CacheTTL(ms)` on GET routes with cache.
+- Use `@Param('id', ParseUUIDPipe)` for UUID path parameters.
+- Use `@CurrentUser('sub')` and `@CurrentUser('isAdmin')` for context.
+- Use `@ApiOperation({ operationId: '...' })` on every HTTP route (`@Get`, `@Post`, `@Put`, `@Patch`, `@Delete`).
 
 ## OperationId naming
 
-- OperationId moet geen `use` prefix bevatten.
-- Gebruik formaat `<Resource><Action>` in PascalCase, bijvoorbeeld `UserGet`, `UserGetList`, `UserCreate`, `UserUpdate`, `UserDelete`.
-- Gebruik een enkelvoudige resource-naam waar logisch (`User`, `Organisation`, `File`, `Auth`, `Health`, `App`).
-- Zorg dat elke `operationId` uniek is binnen de API.
+Format: `{Resource}{Action}` in PascalCase. Resource is a singular noun (`User`, `Organisation`, `File`, `Auth`, `Health`). Every `operationId` is unique within the API.
 
-## Verantwoordelijkheden
+### Standard CRUD actions
 
-- Controllers valideren input en autorisatievoorwaarden op route-niveau.
-- Controllers delegeren business logic naar de service.
-- Houd return types expliciet (`Promise<ResponseDto>` of paginated variant).
-- Vermijd directe Prisma calls in controllers.
+Always use one of these single-word verbs for CRUD — **no** compound variants like `GetList`, `GetById`, `RemoveOne`, `FindAll`.
+
+| Action   | HTTP            | Meaning                         |
+|----------|-----------------|---------------------------------|
+| `List`   | GET (collection)| Multiple items, with filters    |
+| `Get`    | GET (single)    | One item by id                  |
+| `Create` | POST            | Create a new item               |
+| `Update` | PATCH (or PUT)  | Modify an existing item         |
+| `Delete` | DELETE          | Remove the entity               |
+
+Examples: `UserList`, `UserGet`, `UserCreate`, `UserUpdate`, `UserDelete`.
+
+### Sub-resources
+
+Chain them: `{Parent}{Child}{Action}` — for example `OrganisationMemberList`, `OrganisationMemberInvite`.
+
+### Domain actions (only when CRUD does not capture the intent)
+
+Use the same verb consistently across the API for each action:
+
+- **Auth flow:** `AuthLogin`, `AuthLogout`, `AuthRegister`, `AuthRefresh`, `AuthActivate`, `AuthResendActivation`, `AuthChangePassword`, `AuthRequestNewPassword`, `AuthResetPassword`, `AuthRequestEmailChange`, `AuthConfirmEmailChange`, `AuthGetCurrentUser` (for `/auth/me`).
+- **`Invite` ≠ `Create`:** use `Invite` when the invited entity (e.g. user) already exists — `OrganisationMemberInvite`.
+- **`Upload` / `Replace`:** for file endpoints with a binary body — `FileUpload` (POST), `FileReplace` (PUT).
+- **`Remove` ≠ `Delete`:** `Remove` breaks a relationship without deleting the entity (`OrganisationMemberRemove` removes the membership, not the user). `Delete` removes the entity itself (`UserDelete`, `FileDelete`).
+
+### Forbidden patterns
+
+- No `use` prefix in the operationId — that prefix is reserved for the generated React Query hooks.
+- No compound CRUD verbs (`GetList`, `GetById`, `RemoveOne`).
+- No noun-after-verb-after-noun ordering (`AuthMeGet` is wrong — use `AuthGetCurrentUser`). Resource = noun (first), action = verb (last).
+- No transport mechanism in the name (`Mail*`, `Email*`, `Webhook*`) for features that just happen to use that mechanism — unless the entire module is literally about that mechanism (like our `mail` module).
+
+## Responsibilities
+
+- Controllers validate input and authorisation conditions at the route level.
+- Controllers delegate business logic to the service.
+- Keep return types explicit (`Promise<ResponseDto>` or paginated variant).
+- Avoid direct Prisma calls in controllers.

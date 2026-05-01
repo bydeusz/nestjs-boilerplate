@@ -114,14 +114,14 @@ describe('AuthService', () => {
     );
     expect(queueService.addMailJob).toHaveBeenCalledTimes(1);
 
-    const updatePasswordCalls = usersService.updatePassword.mock
-      .calls as Array<[string, string, boolean]>;
+    const updatePasswordCalls = usersService.updatePassword.mock.calls as Array<
+      [string, string, boolean]
+    >;
     const addMailJobCalls = queueService.addMailJob.mock.calls as Array<
       [string, { context: { temporaryPassword: string; resetUrl: string } }]
     >;
     const passwordHash = updatePasswordCalls[0][1];
-    const temporaryPassword =
-      addMailJobCalls[0][1].context.temporaryPassword;
+    const temporaryPassword = addMailJobCalls[0][1].context.temporaryPassword;
 
     expect(passwordHash).not.toBe(temporaryPassword);
     await expect(
@@ -206,7 +206,8 @@ describe('AuthService', () => {
         template: 'activation-code',
         context: expect.objectContaining({
           code: '123456',
-          activationUrl: 'http://localhost:3000/verify?email=john%40example.com',
+          activationUrl:
+            'http://localhost:3000/verify?email=john%40example.com',
         }),
       }),
     );
@@ -281,7 +282,11 @@ describe('AuthService', () => {
     });
 
     await expect(
-      service.resetPassword('john@example.com', 'WrongTemp123!', 'NewSecret123!'),
+      service.resetPassword(
+        'john@example.com',
+        'WrongTemp123!',
+        'NewSecret123!',
+      ),
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 
@@ -342,9 +347,11 @@ describe('AuthService', () => {
         }),
       );
 
-      const recipients = (queueService.addMailJob.mock.calls as Array<
-        [string, { to: string; template: string }]
-      >).map(([, payload]) => ({
+      const recipients = (
+        queueService.addMailJob.mock.calls as Array<
+          [string, { to: string; template: string }]
+        >
+      ).map(([, payload]) => ({
         to: payload.to,
         template: payload.template,
       }));

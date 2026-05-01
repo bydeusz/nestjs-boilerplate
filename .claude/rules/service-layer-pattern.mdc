@@ -8,29 +8,29 @@ alwaysApply: false
 
 ## Prisma typing
 
-- Definieer een `*PublicSelect` constant met `satisfies Prisma.*Select`.
-- Definieer een `*Public` payload type met `Prisma.*GetPayload`.
-- Gebruik deze select consequent in `findMany`, `findUnique`, `create`, `update`, `delete`.
+- Define a `*PublicSelect` constant with `satisfies Prisma.*Select`.
+- Define a `*Public` payload type with `Prisma.*GetPayload`.
+- Use this select consistently in `findMany`, `findUnique`, `create`, `update`, `delete`.
 
-## Mutaties en cache
+## Mutations and cache
 
-- Injecteer `CACHE_MANAGER` als cache gebruikt wordt.
-- Houd `private invalidateCache(): Promise<void>` aan.
-- Roep cache invalidatie aan na elke mutatie (`create`, `update`, `remove`).
+- Inject `CACHE_MANAGER` when cache is used.
+- Maintain a `private invalidateCache(): Promise<void>` method.
+- Call cache invalidation after every mutation (`create`, `update`, `remove`).
 
-## Paginatie
+## Pagination
 
-- Gebruik `buildPrismaSkipTake(query)` voor `skip/take`.
-- Gebruik `$transaction([findMany, count])` voor data + total.
-- Retourneer `{ data, meta: buildPaginationMeta(query, total) }`.
+- Use `buildPrismaSkipTake(query)` for `skip/take`.
+- Use `$transaction([findMany, count])` for data + total.
+- Return `{ data, meta: buildPaginationMeta(query, total) }`.
 
-## Mapping en assets
+## Mapping and assets
 
-- Map Prisma payloads naar response DTOs in `private to*ResponseDto()`.
-- Gebruik `resolveAssetUrl()` voor signed URLs via `StorageService`.
-- Vang storage URL errors af en return `null` als fallback.
+- Map Prisma payloads to response DTOs in `private to*ResponseDto()`.
+- Use `resolveAssetUrl()` for signed URLs via `StorageService`.
+- Catch storage URL errors and return `null` as a fallback.
 
-## Fouten en toegang
+## Errors and access
 
-- Gooi `NotFoundException` voor ontbrekende records.
-- Plaats domein-toegangschecks in private `assert*` helpers.
+- Throw `NotFoundException` for missing records.
+- Place domain access checks in private `assert*` helpers.
