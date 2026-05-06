@@ -17,6 +17,12 @@ const userPublicSelect = {
   isActive: true,
   memberships: { select: { organisationId: true } },
   avatarUrl: true,
+  address: true,
+  postalCode: true,
+  city: true,
+  country: true,
+  kvk: true,
+  vatNumber: true,
   createdAt: true,
   updatedAt: true,
 } satisfies Prisma.UserSelect;

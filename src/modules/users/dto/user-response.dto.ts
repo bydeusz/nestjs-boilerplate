@@ -7,4 +7,10 @@ export class UserResponseDto extends BaseEntityDto {
   isActive!: boolean;
   organisationIds!: string[];
   avatarUrl!: string | null;
+  address!: string | null;
+  postalCode!: string | null;
+  city!: string | null;
+  country!: string | null;
+  kvk!: string | null;
+  vatNumber!: string | null;
 }

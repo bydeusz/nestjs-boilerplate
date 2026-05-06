@@ -8,6 +8,12 @@ model User {
   mustChangePassword Boolean          @default(false)
   temporaryPasswordExpiresAt DateTime?
   avatarUrl          String?
+  address            String?
+  postalCode         String?
+  city               String?
+  country            String?
+  kvk                String?
+  vatNumber          String?
   memberships        OrganisationMember[]
   refreshTokens      RefreshToken[]
   activationCodes    ActivationCode[]
